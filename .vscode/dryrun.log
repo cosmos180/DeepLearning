@@ -1,0 +1,6 @@
+/usr/bin/make --dry-run --always-make --keep-going --print-directory
+make: Entering directory `/Users/cosmos/Documents/DeepLearning'
+make: Leaving directory `/Users/cosmos/Documents/DeepLearning'
+ 
+make: *** No targets specified and no makefile found.  Stop.
+ 
