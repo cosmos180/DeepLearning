@@ -9,9 +9,10 @@ import time
 
 from PIL import Image, ExifTags
 from PIL.TiffTags import TAGS
-import exifread
-import piexif
+# import exifread
+# import piexif
 import json
+import asyncio
 
 
 # a = np.eye(3)
@@ -453,24 +454,33 @@ def drawRectOnImage(src_image_path, dst_image_path, left_top_point, right_bottom
                                   right_bottom_point,
                                   (255, 0, 0), 2)
 
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    bottomLeftCornerOfText = (10, 500)
-    fontScale = 1
-    fontColor = (255, 0, 255)
-    lineType = 2
-
-    cv2.putText(image, 'Hello World!',
-                left_top_point,
-                font,
-                fontScale,
-                fontColor,
-                lineType)
+    # font = cv2.FONT_HERSHEY_SIMPLEX
+    # bottomLeftCornerOfText = (10, 500)
+    # fontScale = 1
+    # fontColor = (255, 0, 255)
+    # lineType = 2
+    #
+    # cv2.putText(image, 'Hello World!',
+    #             left_top_point,
+    #             font,
+    #             fontScale,
+    #             fontColor,
+    #             lineType)
 
     cv2.imwrite(dst_image_path, imageWithRect)
 
+async def hello():
+    print("Hello world!")
+    r = await asyncio.sleep(1)
+    print("Hello again!")
 
 if __name__ == "__main__":
     rootDir = "/Users/cosmos/Desktop/chameleon/"
+
+    
+    asyncio.run(hello())
+
+
     # parseAndSpiltJsonFile("/Users/cosmos/Desktop/5d4a3dcce0d2254808def966/15651465730190.9265406450435381_list.json", rootDir)
 
     # createTestData(rootDir)
@@ -479,36 +489,57 @@ if __name__ == "__main__":
     # mapTestDataToImage("/Users/cosmos/Desktop/5bcd5df905a691d9b0966564.txt", rootDir + "base/image/")
 
     # runTestData(
-    #     "/Users/cosmos/Desktop/benchmark/5bcd5df905a691d9b0966564/5bcd5df905a691d9b0966564_recognize.txt",
-    #     "/Users/cosmos/Desktop/chameleon/base/5bcd5df905a691d9b0966564_base.json"
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/benchmark/5bcdafef05a691d9b096657a/5bcdafef05a691d9b096657a_recognize.txt",
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/chameleon/base/5bcdafef05a691d9b096657a_base.json"
     # )
 
     # runTestData(
-    #     "/Users/cosmos/Desktop/benchmark/5bce952505a691d9b096657e/5bce952505a691d9b096657e_recognize.txt",
-    #     "/Users/cosmos/Desktop/chameleon/base/5bce952505a691d9b096657e_base.json"
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/benchmark/5bce952505a691d9b096657e/5bce952505a691d9b096657e_recognize.txt",
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/chameleon/base/5bce952505a691d9b096657e_base.json"
     # )
 
-    runTestData(
-        "/Users/cosmos/Desktop/benchmark/5bcdafef05a691d9b096657a/5bcdafef05a691d9b096657a_recognize.txt",
-        "/Users/cosmos/Desktop/chameleon/base/5bcdafef05a691d9b096657a_base.json"
-    )
+    # runTestData(
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/benchmark/5bcd5df905a691d9b0966564/5bcd5df905a691d9b0966564_recognize.txt",
+    #     "/Users/cosmos/Documents/tuputech/Chameleon/chameleon/base/5bcd5df905a691d9b0966564_base.json"
+    # )
 
     # drawRectOnImage("/Users/cosmos/Desktop/5bce952505a691d9b096657e/1564056921900_0010888.jpeg",
     #                 "/Users/cosmos/Desktop/1564056921900_0010888.jpeg",
     #                 (555, 871), (631, 948))
     #
-    # drawRectOnImage("/Users/cosmos/Desktop/5bcd5df905a691d9b0966564/1564054797777_0000322.jpeg",
-    #                 "/Users/cosmos/Desktop/1564054797777_0000322.jpeg",
-    #                 (205, 518), (380, 693))
+    # drawRectOnImage("/Users/cosmos/Documents/tuputech/Chameleon/5bcd5df905a691d9b0966564/1564056101977_0006843.jpeg",
+    #                 "/Users/cosmos/Desktop/1564056101977_0006843.jpeg",
+    #                 (402, 486), (607, 692))
     #
 
     # drawRectOnImage("/Users/cosmos/Desktop/5bcd5df905a691d9b0966564/1564055305177_0002859.jpeg",
     #                 "/Users/cosmos/Desktop/1564055305177_0002859.jpeg",
     #                 (899, 533), (1124, 758))
     #
-    # drawRectOnImage("/Users/cosmos/Desktop/5bcdafef05a691d9b096657a/1564055893444_0005912.jpeg",
-    #                 "/Users/cosmos/Desktop/1564055893444_0005912.jpeg",
-    #                 (1606, 806), (1771, 971))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (475, 165), (607, 297))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (171, 211), (307, 346))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (268, 71), (394, 197))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (557, 51), (679, 173))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (354, 207), (482, 336))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (377, 29), (503, 155))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (612, 214), (739, 341))
+    # drawRectOnImage("/Users/cosmos/Desktop/test.jpg",
+    #                 "/Users/cosmos/Desktop/test.jpg",
+    #                 (700, 112), (810, 221))
 
     # ret = solve_coincide((415, 629, 615, 829), (272, 595, 475, 798))
     # print(ret)

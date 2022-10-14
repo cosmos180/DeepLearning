@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "attach",
+      "name": "Attach",
+      "program": "${workspaceFolder}test_package/build/71ecdd8ab409922ee20c2a8c684cce6079228ccb/bin/example"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": true,
+      "externalConsole": false,
+      "cwd": "/Users/cosmos/Documents/DeepLearning/cpp/DeepLearningCPP11/conan",
+      "program": "/Users/cosmos/Documents/DeepLearning/cpp/DeepLearningCPP11/conan/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb"
+    }
+  ]
+}
