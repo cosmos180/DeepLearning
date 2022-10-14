@@ -5,25 +5,16 @@
 //  Created by bughero on 2019/3/21.
 //  Copyright © 2019 候 金鑫. All rights reserved.
 //
-#include "cpp_mplest.hpp"
+#include "cpp_molest.h"
 
 #include <iostream>
 #include <mm_malloc.h>
-#include <sstream>
-
 //#define _GNU_SOURCE
 //#include <sched.h>
 
 #include <stdlib.h>
 
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <list>
-
 using namespace std;
-
-
 
 namespace CPPMolest {
     template <typename TimeUnit = std::chrono::milliseconds, bool EnableAutoPrint = true>
@@ -43,11 +34,11 @@ namespace CPPMolest {
         long long tap() {
             auto end = std::chrono::system_clock::now();
             return std::chrono::duration_cast<TimeUnit>(end - mBegin).count();
-        }
-        
+        }        
+
+        std::string mTag;
         std::chrono::system_clock::time_point mBegin;
         std::chrono::system_clock::time_point mEnd;
-        std::string mTag;
 //        bool mAutoPrint = true;
     };
     
@@ -137,92 +128,17 @@ namespace CPPMolest {
         delete [] dstPrt;
         dstPrt = nullptr;
     }
-    
-    
+
     template<class T, class Enable = void>
-    class A {};
+    class A{};
     
+    template<class T>
+    class A<T, typename std::enable_if<std::is_floating_point<T>::valye>::type> {};
     
     void molest_enable_if() {
         A<double> a;
+        A<int> b;
     }
     
-    void molest_memory_algin() {
-        enum class PreProcessType : int64_t {
-            Type_Raw = 0,
-            Type_Raw_Frame = 1,
-            Type_Half_Frame = 2,
-            MIN = Type_Raw,
-            MAX = Type_Half_Frame
-        };
-        
-        typedef struct Target {
-//            int a;
-//            string b;
-//            vector<int> c;//24
-            
-//            shared_ptr<uint8_t> e;
-//            shared_ptr<long> e; //16
-//            float d;
-            
-            
-//            bool f;
-//            short h;
-//            int a;
-            
-            
-//            PreProcessType g;
-            
-//            std::atomic<bool> i;
-//            unordered_map<std::string, long> j;
-            std::list<string> k;
-
-        } Target;
-        
-//        cout <<"sizeof struct is" << sizeof(target) <<endl;
-        short x = -1;
-        printf("sizeof struct is %lu, x = %d", sizeof(Target), x);
-    }
-    
-#define VER 2
-    void molest_string_concat() {
-        typedef std::chrono::high_resolution_clock clock;
-        typedef std::chrono::duration<float, std::milli> mil;
-        std::string l_czTempStr;
-        std::string s1="Test data1";
-        auto t0 = clock::now();
-#if VER==1
-        for (int i = 0; i < 100000; ++i)
-        {
-            l_czTempStr = s1 + "Test data2" + "Test data3";
-        }
-#elif VER==2
-        for (int i = 0; i < 100000; ++i)
-        {
-            l_czTempStr =  "Test data1";
-            l_czTempStr += "Test data2";
-            l_czTempStr += "Test data3";
-        }
-#elif VER==3
-        for (int i = 0; i < 100000; ++i)
-        {
-            l_czTempStr =  "Test data1";
-            l_czTempStr.append("Test data2");
-            l_czTempStr.append("Test data3");
-        }
-#elif VER==4
-        for (int i = 0; i < 100000; ++i)
-        {
-            std::ostringstream oss;
-            oss << "Test data1";
-            oss << "Test data2";
-            oss << "Test data3";
-            l_czTempStr = oss.str();
-        }
-#endif
-        auto t1 = clock::now();
-        std::cout << l_czTempStr << '\n';
-        std::cout << mil(t1-t0).count() << "ms\n";
-    }
 }
 
