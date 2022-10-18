@@ -2,13 +2,17 @@
  * @Author: houjinxin
  * @Date: 2021-06-29 19:36:31
  * @Last Modified by: houjinxin
- * @Last Modified time: 2022-10-14 12:23:15
+ * @Last Modified time: 2022-10-14 17:39:28
  */
 #ifndef TPTHREADSAFEQUEUE_H
 #define TPTHREADSAFEQUEUE_H
 
-#if USE_PTHREAD
+#define USE_PTHREAD
+
+#ifdef USE_PTHREAD
 #include <pthread.h>
+#include <sstream>
+#include <thread>
 #else
 #include <condition_variable>
 #include <mutex>
@@ -16,13 +20,16 @@
 
 #include <queue>
 
-namespace jason {
+#define MUTEX_OWNER(m) (m >> 16) & 0xffff
+#define MUTEX_COUNTER(m) (m >> 2) & 0xfff
+
+namespace TupuIPC {
     template <typename T>
     class TPThreadSafeQueue {
       private:
-#if USE_PTHREAD
-        pthread_mutex_t mut;
-        pthread_cond_t data_cond;
+#ifdef USE_PTHREAD
+        mutable pthread_mutex_t mut;
+        mutable pthread_cond_t data_cond;
 #else
         mutable std::recursive_mutex mut;
         mutable std::condition_variable_any data_cond;
@@ -34,8 +41,13 @@ namespace jason {
 
       private:
         void init() {
-#if USE_PTHREAD
-            pthread_mutex_init(&mut, nullptr);
+#ifdef USE_PTHREAD
+            pthread_mutexattr_t attr;
+            pthread_mutexattr_init(&attr);
+            pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+            pthread_mutex_init(&mut, &attr);
+            pthread_mutexattr_destroy(&attr);
+
             pthread_cond_init(&data_cond, NULL);
 #endif
         }
@@ -71,8 +83,16 @@ namespace jason {
          * 将元素加入队列
          */
         void push(const value_type &new_value) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             pthread_mutex_lock(&mut);
+
+            // const auto &data = mut.__private[0];
+            // auto owner = MUTEX_OWNER(data);
+            // auto counter = MUTEX_COUNTER(data);
+            // std::stringstream ss;
+            // ss << std::this_thread::get_id();
+            // uint64_t id = std::stoull(ss.str());
+            // printf("this_id %d, current mux owner %d, counter %d\n", owner, counter);
 
             data_queue.push(new_value);
 
@@ -86,8 +106,11 @@ namespace jason {
         }
 
         void push(value_type &&new_value) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             pthread_mutex_lock(&mut);
+
+            // const auto &data = mut.__private[0];
+            // printf("current mux ower %d, counter %d\n", MUTEX_OWNER(data), MUTEX_COUNTER(data));
 
             data_queue.push(std::move(new_value));
 
@@ -102,7 +125,7 @@ namespace jason {
 
         template <class... _Args>
         void emplace(_Args &&...__args) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             pthread_mutex_lock(&mut);
 
             data_queue.emplace(std::forward<_Args>(__args)...);
@@ -120,23 +143,19 @@ namespace jason {
          * 从队列中弹出一个元素,如果队列为空就阻塞
          */
         value_type wait_and_pop() {
-#if USE_PTHREAD
-            value_type value;
+#ifdef USE_PTHREAD
             pthread_mutex_lock(&mut);
-            do {
-                while (this->data_queue.empty() && !forceExit) {
-                    pthread_cond_wait(&data_cond, &mut);
-                }
-
-                if (!forceExit) {
-                    value = std::move(data_queue.front());
-                    data_queue.pop();
-                }
-            } while (0);
-
-            pthread_mutex_unlock(&mut);
-
-            return value;
+            while (this->data_queue.empty() && !forceExit) {
+                pthread_cond_wait(&data_cond, &mut);
+            }
+            if (!forceExit) {
+                auto value = std::move(data_queue.front());
+                data_queue.pop();
+                pthread_mutex_unlock(&mut);
+                return value;
+            } else {
+                return {};
+            }
 #else
             std::unique_lock<std::recursive_mutex> lk(mut);
             data_cond.wait(lk, [this] { return (!this->data_queue.empty() || forceExit); });
@@ -154,7 +173,7 @@ namespace jason {
          * 从队列中弹出一个元素,如果队列为空返回false
          */
         bool try_pop(value_type &value) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             bool ret = false;
             pthread_mutex_lock(&mut);
             do {
@@ -184,7 +203,7 @@ namespace jason {
          * 返回队列是否为空
          */
         auto empty() const -> decltype(data_queue.empty()) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             bool ret = true;
             pthread_mutex_lock(&mut);
 
@@ -203,7 +222,7 @@ namespace jason {
          * 返回队列中元素数个
          */
         auto size() const -> decltype(data_queue.size()) {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             decltype(data_queue.size()) ret;
             pthread_mutex_lock(&mut);
 
@@ -219,7 +238,7 @@ namespace jason {
         }
 
         void endupWait() {
-#if USE_PTHREAD
+#ifdef USE_PTHREAD
             pthread_mutex_lock(&mut);
 
             forceExit = true;
@@ -234,6 +253,6 @@ namespace jason {
         }
     };
     /* TPThreadSafeQueue */
-} // namespace jason
+} // namespace TupuIPC
 
 #endif // TPTHREADSAFEQUEUE_H

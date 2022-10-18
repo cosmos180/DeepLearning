@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/build/main",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "externalConsole": true,
+            "externalConsole": false,
             "MIMode": "lldb",
             "miDebuggerPath": "/Users/cosmos/.vscode/extensions/ms-vscode.cpptools-1.13.2-darwin-x64/debugAdapters/lldb/bin/lldb-mi"
         }
