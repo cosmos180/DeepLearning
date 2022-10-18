@@ -2,19 +2,18 @@
  * @Author: houjinxin
  * @Date: 2022-10-13 22:17:25
  * @Last Modified by: houjinxin
- * @Last Modified time: 2022-10-14 12:10:53
+ * @Last Modified time: 2022-10-17 17:23:09
  */
-#include "myprint.h"
-
 #include "jason/BitmapCounter.h"
 #include "jason/CStringArray.h"
 #include "jason/Cache.h"
 #include "jason/STDMove.h"
 #include "jason/STLType.h"
 #include "jason/SharePTR.h"
+#include "jason/air/air_pthread_reader_writer.h"
 #include "jason/air/air_thread_safe_queue.h"
+#include "jason/air/air_unordered_map.h"
 #include "jason/network.h"
-#include "jason/unordered_map.h"
 
 template <typename Target>
 int runTargetMethod() {
@@ -46,11 +45,10 @@ int runTargetMethod() {
 #define UNIQUE_NAME(base) CONCAT(base, __COUNTER__)
 
 int main() {
-    int num = 1;
-    myprintf(num);
-
     // RUN(SharePTR);
-    RUN(AIR_THREAD_SAFE_QUEUE);
+    // RUN(AIR_THREAD_SAFE_QUEUE);
+    // RUN(UnorderedMap);
+    RUN(AIR_PTHREAD_READER_WRITER);
 
     return 0;
 }

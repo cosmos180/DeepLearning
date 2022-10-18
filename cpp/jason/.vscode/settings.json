@@ -1,4 +1,5 @@
 {
+    "cmake.configureArgs": ["-DCMAKE_TOOLCHAIN_FILE=/Users/cosmos/.conan/data/android_ndk_installer/r20/bincrafters/stable/package/96a307d747235b0e7df54f0118d5acaed00b63c5/build/cmake/android.toolchain.cmake"],
     "files.associations": {
         "pthread.h": "c",
         "__mutex_base": "c",
