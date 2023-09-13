@@ -9,10 +9,16 @@ SET(USE_PTHREAD ON)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-
 file(GLOB_RECURSE source *.cpp **/.cpp)
 
-add_library(${project_name} SHARED ${source})
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  message(STATUS "Current system is Linux")
+  file(GLOB_RECURSE PLATFORM_DIR_SRC platform/linux/*.cpp)
+else()
+  message(STATUS "Current system is not Linux")
+endif()
+
+add_library(${project_name} SHARED ${source} ${PLATFORM_DIR_SRC})
 
 if(USE_PTHREAD)
     # message(FATAL_ERROR "USE_PTHREAD: ${USE_PTHREAD}")
