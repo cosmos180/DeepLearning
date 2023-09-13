@@ -1,30 +1,29 @@
 /*
  * @Author: your name
  * @Date: 2020-12-14 17:27:35
- * @LastEditTime: 2020-12-14 18:25:18
- * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2023-09-13 10:56:46
+ * @LastEditors: bughero jinxinhou@tuputech.com
  * @Description: In User Settings Edit
- * @FilePath: /conan/test_package/target/network.h
+ * @FilePath: /DeepLearning/cpp/jason/jason/network.h
  */
 
 #include <cstdint>
 #include <fstream>
-#include <streambuf>
-#include <regex>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
 #include <iostream>
+#include <netdb.h>
+#include <regex>
+#include <stdio.h>
+#include <streambuf>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 
 using namespace std;
 
-class Network
-{
-private:
+class Network {
+  private:
     /* data */
-public:
+  public:
     uint64_t getIFMAC(const string &ifname) {
         ifstream iface("/sys/class/net/" + ifname + "/address");
         string str((istreambuf_iterator<char>(iface)), istreambuf_iterator<char>());
@@ -38,7 +37,7 @@ public:
 
     void test() {
         string iface = "eth0";
-        printf("%s: mac=%016llX\n", iface.c_str(), getIFMAC(iface));
+        printf("%s: mac=%016lX\n", iface.c_str(), getIFMAC(iface));
 
         // FILE *pp = popen("ls -lh", "r"); // build pipe
         // if (!pp)
@@ -49,7 +48,7 @@ public:
         // while (fgets(tmp, sizeof(tmp), pp) != NULL) {
         //     std::cout << tmp << std::endl; // can join each line as string
         // }
-            
+
         // pclose(pp);
     }
 };

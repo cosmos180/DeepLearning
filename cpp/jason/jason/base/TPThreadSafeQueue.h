@@ -7,8 +7,6 @@
 #ifndef TPTHREADSAFEQUEUE_H
 #define TPTHREADSAFEQUEUE_H
 
-#define USE_PTHREAD
-
 #ifdef USE_PTHREAD
 #include <pthread.h>
 #include <sstream>

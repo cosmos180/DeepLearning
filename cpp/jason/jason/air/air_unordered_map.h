@@ -1,10 +1,10 @@
 /*
  * @Author: your name
  * @Date: 2020-11-25 19:02:09
- * @LastEditTime: 2021-03-29 17:47:30
- * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2023-09-13 10:55:25
+ * @LastEditors: bughero jinxinhou@tuputech.com
  * @Description: In User Settings Edit
- * @FilePath: /conan/test_package/target/unordered_map.h
+ * @FilePath: /DeepLearning/cpp/jason/jason/air/air_unordered_map.h
  */
 #include <array>
 #include <mutex>
@@ -29,7 +29,7 @@ class UnorderedMap : public AIR_BASE {
         //       printf("i %d value %u\n", i, inout[i]);
         //   }
 
-        printf("__constrain_hash(36316511, %zu) == %zu\n", 2, __constrain_hash(36316512, 2));
+        printf("__constrain_hash(36316511, %u) == %zu\n", 2, __constrain_hash(36316512, 2));
 
         for (size_t i = 1; i < 129; i++) {
             // printf("__constrain_hash(36316511, %zu) == %zu\n", i, __constrain_hash(36316512, i));
