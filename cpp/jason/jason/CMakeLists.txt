@@ -12,7 +12,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 file(GLOB_RECURSE source *.cpp **/.cpp)
 
-add_library(${project_name} STATIC ${source})
+add_library(${project_name} SHARED ${source})
 
 if(USE_PTHREAD)
     # message(FATAL_ERROR "USE_PTHREAD: ${USE_PTHREAD}")

@@ -102,7 +102,13 @@
     "*.inc": "cpp",
     "hash_map": "cpp",
     "hash_set": "cpp",
-    "filesystem": "cpp"
+    "filesystem": "cpp",
+    "*.tcc": "cpp",
+    "concepts": "cpp",
+    "memory_resource": "cpp",
+    "numbers": "cpp",
+    "semaphore": "cpp",
+    "stop_token": "cpp"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
