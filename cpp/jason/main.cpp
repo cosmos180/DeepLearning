@@ -15,6 +15,8 @@
 #include "jason/air/air_unordered_map.h"
 #include "jason/network.h"
 
+#include "jason.h"
+
 template <typename Target>
 int runTargetMethod() {
     Target *t = new Target();
@@ -50,5 +52,6 @@ int main() {
     // RUN(UnorderedMap);
     RUN(AIR_PTHREAD_READER_WRITER);
 
+    JASON::Linux::epollTest();
     return 0;
 }
