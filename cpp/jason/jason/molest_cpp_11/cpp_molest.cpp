@@ -136,4 +136,70 @@ namespace CPPMolest {
         A<int> b;
     }
 
+    void molest_type_index() {
+        {
+            int32_t x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            uint x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            uint32_t x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            long long x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+            std::cout << "int64_t size is " << sizeof(x) << std::endl;
+            std::cout << "long long int size is " << sizeof(long long int) << std::endl;
+            std::cout << "long int size is " << sizeof(long int) << std::endl;
+
+            // long long *p = &x;
+            // dynamic_cast<int64_t *>(p);
+            // auto y = static_cast<long long *>(p);
+        }
+
+        {
+            long x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+            std::cout << "long long size is " << sizeof(x) << std::endl;
+
+            long *p = &x;
+            // auto y = dynamic_cast<int64_t *>(p);
+            // auto y = static_cast<long long *>(p);
+        }
+
+        {
+            uint64_t x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            long x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            ulong x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            float x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        {
+            double x = 42;
+            std::cout << "x is " << typeid(decltype(x)).name() << std::endl;
+        }
+
+        { std::cout << "x is " << typeid(void).name() << std::endl; }
+    }
+
 } // namespace CPPMolest

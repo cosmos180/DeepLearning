@@ -2,7 +2,7 @@
  * @Author: bughero jinxinhou@tuputech.com
  * @Date: 2023-09-13 11:00:49
  * @LastEditors: bughero jinxinhou@tuputech.com
- * @LastEditTime: 2023-09-13 12:04:55
+ * @LastEditTime: 2023-09-15 19:28:52
  * @FilePath: /DeepLearning/cpp/jason/jason/jason.h
  * @Description:
  *
@@ -18,6 +18,7 @@ namespace JASON {
     namespace CPP {}
 
     namespace Linux {
+        void hello();
         int32_t epollTest();
     } // namespace Linux
 

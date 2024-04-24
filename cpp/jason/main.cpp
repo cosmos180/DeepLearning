@@ -13,6 +13,7 @@
 #include "jason/air/air_pthread_reader_writer.h"
 #include "jason/air/air_thread_safe_queue.h"
 #include "jason/air/air_unordered_map.h"
+#include "jason/molest_cpp_11/cpp_molest.h"
 #include "jason/network.h"
 
 #include "jason.h"
@@ -52,6 +53,9 @@ int main() {
     // RUN(UnorderedMap);
     RUN(AIR_PTHREAD_READER_WRITER);
 
-    JASON::Linux::epollTest();
+    // JASON::Linux::epollTest();
+
+    CPPMolest::molest_type_index();
+
     return 0;
 }
