@@ -7,3 +7,4 @@ python/.idea
 kotlin/out
 cpp/jason/build/
 node/node_modules
+rust/target
