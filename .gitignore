@@ -8,3 +8,4 @@ kotlin/out
 cpp/jason/build/
 node/node_modules
 rust/target
+rust/Cargo.lock
