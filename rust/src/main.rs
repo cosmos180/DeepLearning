@@ -1,3 +1,14 @@
+/*
+ * @Author       : HouJinxin jinxinhou@tuputech.com
+ * @Date         : 2024-11-29 02:12:50
+ * @LastEditors  : HouJinxin jinxinhou@tuputech.com
+ * @LastEditTime : 2024-11-29 02:46:26
+ * @FilePath     : /DeepLearning/rust/src/main.rs
+ * @Description  :
+ *
+ * Copyright (c) 2024 by @Me, All Rights Reserved.
+ */
+
 // use rusqlite::{Connection, Result};
 
 // #[derive(Debug)]
@@ -41,16 +52,39 @@
 //         println!("Found person {:?}", person.unwrap());
 //     }
 
-    
 //     Ok(())
 // }
 
-use reqwest::Error;
+// use reqwest::Error;
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    let response = reqwest::get("http://httpbin.org/get").await?;
-    let body = response.text().await?;
-    println!("body = {:?}", body);
-    Ok(())
+// #[tokio::main]
+// async fn main() -> Result<(), Error> {
+//     let response = reqwest::get("http://httpbin.org/get").await?;
+//     let body = response.text().await?;
+//     println!("body = {:?}", body);
+//     Ok(())
+// }
+
+use std::io;
+
+fn println_test() {
+    let x = 5;
+    let y = 10;
+
+    println!("x = {x} and y + 2 = {}", y + 2);
+}
+
+fn main() {
+    println!("Guess the number!");
+    println!("Please input your guess.");
+
+    let mut guess = String::new();
+
+    io::stdin()
+        .read_line(&mut guess)
+        .expect("Failed to read line");
+
+    println!("You guessed: {}", guess);
+
+    println_test();
 }
