@@ -3,7 +3,7 @@ default: build;
 
 
 build:
-	cargo build
+	cargo build --release
 
 run:
-	cargo run
+	cargo run --release
