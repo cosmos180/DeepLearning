@@ -7,3 +7,6 @@ build:
 
 run:
 	cargo run --release
+
+test:
+	cargo test --release
