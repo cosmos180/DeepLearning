@@ -2,7 +2,7 @@
  * @Author       : HouJinxin jinxinhou@tuputech.com
  * @Date         : 2024-11-29 02:54:16
  * @LastEditors  : HouJinxin jinxinhou@tuputech.com
- * @LastEditTime : 2025-04-02 03:15:50
+ * @LastEditTime : 2025-04-15 06:34:33
  * @FilePath     : /DeepLearning/rust/src/main.rs
  * @Description  :
  *
@@ -52,7 +52,10 @@ async fn download_file(url: &str, file_path: &str) -> Result<(), Box<dyn std::er
 
 mod practise {
     pub mod r_box;
+    pub mod r_generic;
+    pub mod r_lifetime;
     pub mod r_list;
+    pub mod r_trait;
 }
 
 #[tokio::main]
@@ -65,8 +68,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     download_file(&opt.url, &file_path).await?;
     // }
 
-    practise::r_box::run();
-    practise::r_list::run();
+    // practise::r_box::run();
+    // practise::r_list::run();
+    // practise::r_generic::run();
+    // practise::r_trait::run();
+    practise::r_lifetime::run();
 
     Ok(())
 }
