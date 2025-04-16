@@ -6,7 +6,7 @@ build:
 	cargo build --release
 
 run:
-	cargo run --release
+	cargo run -- --debug
 
 test:
 	cargo test --release

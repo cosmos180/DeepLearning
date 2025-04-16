@@ -2,7 +2,7 @@
  * @Author       : HouJinxin jinxinhou@tuputech.com
  * @Date         : 2024-11-29 02:54:16
  * @LastEditors  : HouJinxin jinxinhou@tuputech.com
- * @LastEditTime : 2025-04-15 06:34:33
+ * @LastEditTime : 2025-04-16 09:08:22
  * @FilePath     : /DeepLearning/rust/src/main.rs
  * @Description  :
  *
@@ -55,6 +55,8 @@ mod practise {
     pub mod r_generic;
     pub mod r_lifetime;
     pub mod r_list;
+    pub mod r_panic;
+    pub mod r_result;
     pub mod r_trait;
 }
 
@@ -72,7 +74,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // practise::r_list::run();
     // practise::r_generic::run();
     // practise::r_trait::run();
-    practise::r_lifetime::run();
+    // practise::r_lifetime::run();
+    // practise::r_panic::run();
+    practise::r_result::run();
 
     Ok(())
 }
