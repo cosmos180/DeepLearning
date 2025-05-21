@@ -3,4 +3,4 @@ linker = "/opt/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin/arm-linux-gnue
 [target.armv7-unknown-linux-gnueabi]
 linker = "/opt/hisi-linux/x86-arm/arm-himix200-linux/bin/arm-himix200-linux-gcc"
 [target.armv7-linux-androideabi]
-linker = "/home/bughero/Android/Sdk/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang"
+linker = "/opt/android_standalone_toolchain/armv7a/bin/arm-linux-androideabi-clang"
