@@ -1,56 +1,82 @@
-// use rusqlite::{Connection, Result};
+/*
+ * @Author       : HouJinxin jinxinhou@tuputech.com
+ * @Date         : 2024-11-29 02:54:16
+ * @LastEditors  : HouJinxin jinxinhou@tuputech.com
+ * @LastEditTime : 2025-04-16 09:08:22
+ * @FilePath     : /DeepLearning/rust/src/main.rs
+ * @Description  :
+ *
+ * Copyright (c) 2025 by @Me, All Rights Reserved.
+ */
+use reqwest::multipart;
+use structopt::StructOpt;
+use tokio::fs::File;
 
-// #[derive(Debug)]
-// struct Person {
-//     id: i32,
-//     name: String,
-//     data: Option<Vec<u8>>,
-// }
+#[derive(StructOpt)]
+#[structopt(name = "rurl", about = "A rust http client that mimics curl.")]
+struct Opt {
+    #[structopt(short, long)]
+    upload: Option<String>,
 
-// fn main() -> Result<()> {
-//     let conn = Connection::open_in_memory()?;
+    #[structopt(short, long)]
+    download: Option<String>,
 
-//     conn.execute(
-//         "CREATE TABLE person (
-//             id    INTEGER PRIMARY KEY,
-//             name  TEXT NOT NULL,
-//             data  BLOB
-//         )",
-//         (), // empty list of parameters.
-//     )?;
-//     let me = Person {
-//         id: 0,
-//         name: "Steven".to_string(),
-//         data: None,
-//     };
-//     conn.execute(
-//         "INSERT INTO person (name, data) VALUES (?1, ?2)",
-//         (&me.name, &me.data),
-//     )?;
+    #[structopt(short, long)]
+    url: String,
+}
 
-//     let mut stmt = conn.prepare("SELECT id, name, data FROM person")?;
-//     let person_iter = stmt.query_map([], |row| {
-//         Ok(Person {
-//             id: row.get(0)?,
-//             name: row.get(1)?,
-//             data: row.get(2)?,
-//         })
-//     })?;
+async fn upload_file(url: &str, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let file = tokio::fs::read(file_path).await?;
+    let part = multipart::Part::bytes(file).file_name(file_path.to_string());
 
-//     for person in person_iter {
-//         println!("Found person {:?}", person.unwrap());
-//     }
+    let form = multipart::Form::new().part("file", part);
 
-    
-//     Ok(())
-// }
+    let client = reqwest::Client::new();
+    let res = client.post(url).multipart(form).send().await?;
 
-use reqwest::Error;
+    println!("Response: {:?}", res.text().await?);
+    Ok(())
+}
+
+async fn download_file(url: &str, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let res = client.get(url).send().await?;
+
+    let mut file = File::create(file_path).await?;
+    let content = res.bytes().await?;
+    tokio::io::copy(&mut content.as_ref(), &mut file).await?;
+
+    println!("File downloaded to {}", file_path);
+    Ok(())
+}
+
+mod practise {
+    pub mod r_box;
+    pub mod r_generic;
+    pub mod r_lifetime;
+    pub mod r_list;
+    pub mod r_panic;
+    pub mod r_result;
+    pub mod r_trait;
+}
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    let response = reqwest::get("http://httpbin.org/get").await?;
-    let body = response.text().await?;
-    println!("body = {:?}", body);
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // let opt = Opt::from_args();
+
+    // if let Some(file_path) = opt.upload {
+    //     upload_file(&opt.url, &file_path).await?;
+    // } else if let Some(file_path) = opt.download {
+    //     download_file(&opt.url, &file_path).await?;
+    // }
+
+    // practise::r_box::run();
+    // practise::r_list::run();
+    // practise::r_generic::run();
+    // practise::r_trait::run();
+    // practise::r_lifetime::run();
+    // practise::r_panic::run();
+    practise::r_result::run();
+
     Ok(())
 }
