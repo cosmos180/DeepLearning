@@ -1,8 +1,8 @@
 /*
  * @Author       : HouJinxin jinxinhou@tuputech.com
  * @Date         : 2024-11-29 02:54:16
- * @LastEditors  : HouJinxin jinxinhou@tuputech.com
- * @LastEditTime : 2025-04-16 09:08:22
+ * @LastEditors  : bughero bughero2012@gmail.com
+ * @LastEditTime : 2025-06-04 18:03:22
  * @FilePath     : /DeepLearning/rust/src/main.rs
  * @Description  :
  *
@@ -60,6 +60,14 @@ mod practise {
     pub mod r_trait;
 }
 
+mod lua {
+    pub mod async_http_client;
+    pub mod r_lua_demo;
+    pub mod serialize;
+    pub mod userdata;
+}
+
+// #[tokio::main(flavor = "current_thread")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let opt = Opt::from_args();
@@ -76,7 +84,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // practise::r_trait::run();
     // practise::r_lifetime::run();
     // practise::r_panic::run();
-    practise::r_result::run();
+    // practise::r_result::run();
+    // lua::r_lua_demo::run();
+    lua::userdata::run();
+    lua::serialize::run().await?;
+    lua::async_http_client::run().await?;
 
     Ok(())
 }
