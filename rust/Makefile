@@ -9,4 +9,4 @@ run:
 	cargo run -- --debug
 
 test:
-	cargo test --release
+	cargo test -- --nocapture

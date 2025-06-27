@@ -2,7 +2,7 @@
  * @Author       : HouJinxin jinxinhou@tuputech.com
  * @Date         : 2024-11-29 02:54:16
  * @LastEditors  : bughero bughero2012@gmail.com
- * @LastEditTime : 2025-06-04 18:03:22
+ * @LastEditTime : 2025-06-06 18:03:39
  * @FilePath     : /DeepLearning/rust/src/main.rs
  * @Description  :
  *
@@ -62,9 +62,21 @@ mod practise {
 
 mod lua {
     pub mod async_http_client;
+    pub mod lua_engine;
     pub mod r_lua_demo;
     pub mod serialize;
     pub mod userdata;
+}
+
+#[cxx::bridge]
+mod ffi {
+    unsafe extern "C++" {
+        include!("rurl/cpp/include/blobstore.h");
+
+        type BlobstoreClient;
+
+        fn new_blobstore_client() -> UniquePtr<BlobstoreClient>;
+    }
 }
 
 // #[tokio::main(flavor = "current_thread")]
@@ -89,6 +101,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     lua::userdata::run();
     lua::serialize::run().await?;
     lua::async_http_client::run().await?;
+
+    let client = ffi::new_blobstore_client();
 
     Ok(())
 }
