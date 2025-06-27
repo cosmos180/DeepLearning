@@ -9,3 +9,4 @@ cpp/jason/build/
 node/node_modules
 rust/target
 rust/Cargo.lock
+python/openai_chat/venv
