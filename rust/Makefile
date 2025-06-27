@@ -1,5 +1,6 @@
-.PHONY: build run
-default: build;
+.PHONY: build run test
+
+default: build
 
 
 build:
