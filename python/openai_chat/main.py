@@ -36,10 +36,10 @@ completion = client.chat.completions.create(
             "content": [
                 {
                     "type": "image_url",
-                    # "image_url": {"url": f"data:image/jpeg;base64,{base64_image_1}"},
-                    "image_url": {
-                        "url": "https://static.tuputech.com/api/image/original/bi-api/storage-weed201/2025-06-27/00-14/43FECAHPBVD89EA/1750954682166.4501644057607897.jpg"
-                    },
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image_1}"},
+                    # "image_url": {
+                    #     "url": "https://static.tuputech.com/api/image/original/bi-api/storage-weed201/2025-06-27/00-14/43FECAHPBVD89EA/1750954682166.4501644057607897.jpg"
+                    # },
                 },
                 {
                     "type": "text",

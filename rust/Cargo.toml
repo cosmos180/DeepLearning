@@ -19,6 +19,15 @@ hyper-util = { version = "0.1.3", features = ["full"] }
 http-body-util = "0.1.1"
 cxx = "1.0"
 
+base64 = "0.21"
+once_cell = "1.21.3"
+
+
+# 可选：为 openai_image_chat.rs 提供独立可执行文件
+[[bin]]
+name = "openai_image_chat"
+path = "src/openai_image_chat.rs"
+
 [build-dependencies]
 cxx-build = "1.0"
 
