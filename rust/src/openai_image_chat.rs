@@ -23,9 +23,19 @@ mod tests {
         }
         let result = analyze_image_sync(&image_path, &api_key);
 
-        print!("Result: {}", result);
-        assert!(result.contains("Status: "));
-        assert!(result.contains("Response: "));
+        println!(
+            "Result: code={}, message={}, raw_response.len={}",
+            result.code,
+            result.message,
+            result.raw_response.len()
+        );
+        assert_eq!(
+            result.code, 0,
+            "AnalyzeResult.code 应为 0, 实际: {} {}",
+            result.code, result.message
+        );
+        assert!(result.raw_response.contains("Status: "));
+        assert!(result.raw_response.contains("Response: "));
     }
 
     // 测试 analyze_image_buffer_sync (buffer)
@@ -44,10 +54,19 @@ mod tests {
         }
         let jpeg_buf = fs::read(image_path).unwrap();
         let result = analyze_image_buffer_sync(&jpeg_buf, &api_key);
-        print!("Result: {}", result);
-
-        assert!(result.contains("Status: "));
-        assert!(result.contains("Response: "));
+        println!(
+            "Result: code={}, message={}, raw_response.len={}",
+            result.code,
+            result.message,
+            result.raw_response.len()
+        );
+        assert_eq!(
+            result.code, 0,
+            "AnalyzeResult.code 应为 0, 实际: {} {}",
+            result.code, result.message
+        );
+        assert!(result.raw_response.contains("Status: "));
+        assert!(result.raw_response.contains("Response: "));
     }
 }
 use base64::{engine::general_purpose, Engine as _};
@@ -108,32 +127,84 @@ async fn analyze_image_buffer(jpeg_buf: &[u8], api_key: &str) -> Result<String, 
 // cxx::bridge FFI
 #[cxx::bridge]
 mod ffi {
+    struct AnalyzeResult {
+        code: i32,       // 0: ok, 1: 网络异常, 2: LLM异常, 9: 其它
+        message: String, // 错误或成功信息
+        raw_response: String,
+    }
     extern "Rust" {
-        fn analyze_image_sync(image_path: &CxxString, api_key: &CxxString) -> String;
-        fn analyze_image_buffer_sync(jpeg_buf: &[u8], api_key: &CxxString) -> String;
+        fn analyze_image_sync(image_path: &CxxString, api_key: &CxxString) -> AnalyzeResult;
+        fn analyze_image_buffer_sync(jpeg_buf: &[u8], api_key: &CxxString) -> AnalyzeResult;
     }
 }
-// 提供同步接口给 C++ 调用（buffer 版本）
-pub fn analyze_image_buffer_sync(jpeg_buf: &[u8], api_key: &CxxString) -> String {
-    static RUNTIME: OnceCell<Runtime> = OnceCell::new();
-    let rt = RUNTIME.get_or_init(|| Runtime::new().unwrap());
-    match rt.block_on(analyze_image_buffer(jpeg_buf, api_key.to_str().unwrap())) {
-        Ok(res) => res,
-        Err(e) => format!("Error: {}", e),
+// 统一错误处理辅助
+fn handle_result(result: Result<String, Box<dyn Error>>) -> ffi::AnalyzeResult {
+    match result {
+        Ok(res) => ffi::AnalyzeResult {
+            code: 0,
+            message: "ok".to_string(),
+            raw_response: res,
+        },
+        Err(e) => {
+            let msg = e.to_string();
+            // 网络异常
+            if msg.contains("dns error")
+                || msg.contains("timed out")
+                || msg.contains("connection refused")
+                || msg.contains("network")
+            {
+                ffi::AnalyzeResult {
+                    code: 1,
+                    message: msg,
+                    raw_response: String::new(),
+                }
+            // LLM/平台异常
+            } else if msg.contains("429")
+                || msg.contains("context")
+                || msg.contains("quota")
+                || msg.contains("insufficient")
+                || msg.contains("token")
+                || msg.contains("balance")
+            {
+                ffi::AnalyzeResult {
+                    code: 2,
+                    message: msg,
+                    raw_response: String::new(),
+                }
+            } else {
+                ffi::AnalyzeResult {
+                    code: 9,
+                    message: msg,
+                    raw_response: String::new(),
+                }
+            }
+        }
     }
 }
 
-// 提供同步接口给 C++ 调用
-pub fn analyze_image_sync(image_path: &CxxString, api_key: &CxxString) -> String {
+// 提供同步接口给 C++ 调用（buffer 版本）
+pub fn analyze_image_buffer_sync(jpeg_buf: &[u8], api_key: &CxxString) -> ffi::AnalyzeResult {
     static RUNTIME: OnceCell<Runtime> = OnceCell::new();
     let rt = RUNTIME.get_or_init(|| Runtime::new().unwrap());
-    match rt.block_on(analyze_image(
+    let result = rt.block_on(analyze_image_buffer(jpeg_buf, api_key.to_str().unwrap()));
+
+    print!("result: {:?}", result);
+
+    handle_result(result)
+}
+
+// 提供同步接口给 C++ 调用
+pub fn analyze_image_sync(image_path: &CxxString, api_key: &CxxString) -> ffi::AnalyzeResult {
+    static RUNTIME: OnceCell<Runtime> = OnceCell::new();
+    let rt = RUNTIME.get_or_init(|| Runtime::new().unwrap());
+    let result = rt.block_on(analyze_image(
         image_path.to_str().unwrap(),
         api_key.to_str().unwrap(),
-    )) {
-        Ok(res) => res,
-        Err(e) => format!("Error: {}", e),
-    }
+    ));
+
+    print!("result: {:?}", result);
+
+    handle_result(result)
 }
 
 // 可选: 保留 main 便于本地测试
