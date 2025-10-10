@@ -11,11 +11,25 @@ from datetime import datetime
 # 导入各个MCP模块
 from mcp.industry_analyst.analyst import IndustryAnalystMCP
 from mcp.indicator_alignment.aligner import IndicatorAlignmentMCP
-from mcp.downloader.downloader import DownloadMCP
 from mcp.financial_reader.reader import FinancialReaderMCP
 from mcp.data_validator.validator import DataValidatorMCP
 from mcp.external_data.external import ExternalDataMCP
 from mcp.report_generator.generator import ReportGeneratorMCP
+
+# 导入配置
+from config import SystemConfig
+
+# 根据配置选择下载器
+if SystemConfig.USE_REAL_DATA:
+    try:
+        from mcp.downloader.downloader_real import DownloadMCP
+        print("✅ 使用真实数据下载器")
+    except ImportError as e:
+        print(f"⚠️ 无法加载真实数据下载器，回退到模拟数据: {e}")
+        from mcp.downloader.downloader import DownloadMCP
+else:
+    from mcp.downloader.downloader import DownloadMCP
+    print("📊 使用模拟数据下载器")
 
 
 class WorkflowOrchestrator:
