@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  ip-manager:
+    build: .
+    container_name: ip-manager-dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # 开发时挂载源代码
+      - ./backend:/app/backend
+      - ./static:/app/static
+      - ./templates:/app/templates
+      - ./run.py:/app/run.py
+      # 持久化数据
+      - ./data/ip_list.txt:/app/ip_list.txt
+      - ./data/ip_backups:/app/ip_backups
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ip-manager-network
+
+networks:
+  ip-manager-network:
+    driver: bridge

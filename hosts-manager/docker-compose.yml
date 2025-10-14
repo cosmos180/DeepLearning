@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  ip-manager:
+    build: .
+    container_name: ip-manager
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # 持久化数据目录
+      - ./data/ip_list.txt:/app/ip_list.txt
+      - ./data/ip_backups:/app/ip_backups
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ip-manager-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    container_name: ip-manager-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      ip-manager:
+        condition: service_healthy
+    networks:
+      - ip-manager-network
+
+networks:
+  ip-manager-network:
+    driver: bridge
+
+volumes:
+  ip-data:
+    driver: local

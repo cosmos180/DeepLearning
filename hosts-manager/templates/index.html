@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP 地址管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-network-wired"></i> IP 地址管理系统</h1>
+                <p class="subtitle">简单易用的 IP 地址管理工具</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- 添加新条目区域 -->
+            <section class="add-section">
+                <h2><i class="fas fa-plus-circle"></i> 添加新 IP 地址</h2>
+                <form id="add-form" class="form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ip">IP 地址:</label>
+                            <input type="text" id="ip" name="ip" placeholder="例如: 192.168.1.100" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> 添加 IP
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 统计信息 -->
+            <section class="stats-section">
+                <div class="stats-info">
+                    <span class="stats-text">
+                        <i class="fas fa-list"></i>
+                        共 <strong id="total-ips">0</strong> 个 IP 地址
+                    </span>
+                </div>
+            </section>
+
+            <!-- 搜索和筛选 -->
+            <section class="filter-section">
+                <div class="filter-controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="搜索 IP 地址...">
+                    </div>
+                    <button id="refresh-btn" class="btn btn-secondary">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </section>
+
+            <!-- IP 地址列表 -->
+            <section class="entries-section">
+                <h2><i class="fas fa-list"></i> IP 地址列表</h2>
+                <div id="loading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> 正在加载...
+                </div>
+                <div id="entries-container" class="entries-container">
+                    <!-- 条目将通过 JavaScript 动态加载 -->
+                </div>
+                <div id="no-entries" class="no-entries" style="display: none;">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无 IP 地址</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 IP 地址管理系统</p>
+        </footer>
+    </div>
+
+    <!-- 确认对话框 -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> 确认操作</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">确定要执行此操作吗？</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-cancel" class="btn btn-secondary">取消</button>
+                <button id="confirm-ok" class="btn btn-danger">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

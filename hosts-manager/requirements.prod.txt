@@ -1,0 +1,13 @@
+# 生产环境依赖
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# 生产服务器
+gunicorn==21.2.0
+gevent==23.9.1
+
+# 安全
+cryptography==41.0.7
+
+# 性能优化
+redis==5.0.1

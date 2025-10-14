@@ -1,0 +1,121 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.out
+
+# Backup files
+ip_backups/
+*.backup
+
+# Temporary files
+temp/
+tmp/
+temp_env/
+test_env/
+test_fix_env/
+test_format_env/
+debug_env/
+debug_read.py
+test_add_detailed.py
+test_api.py
+test_web_fix.py
+test_final.py
+
+# Deployment artifacts
+ip_manager_deploy/
+*.tar.gz
+
+# Local development
+*.pid
+*.sock
+*.pid.lock
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node modules
+node_modules/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+.env.local
+.env.development
+.env.test
+.env.production
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Flask
+instance/
+.webassets-cache
+
+# Backup files for the IP list
+ip_backups/
+*.backup
