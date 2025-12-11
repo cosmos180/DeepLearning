@@ -1,0 +1,27 @@
+# Bacon configuration file
+# See https://dystroy.org/bacon/config/
+
+[jobs.run-backend]
+command = ["cargo", "run", "--package", "backend"]
+need_stdout = true
+allow_warnings = true
+background = false
+
+[jobs.run-frontend]
+command = ["cargo", "run", "--package", "frontend"]
+need_stdout = true
+allow_warnings = true
+background = false
+
+# You can also add other jobs like test, clippy, etc.
+[jobs.check]
+command = ["cargo", "check", "--all-targets"]
+need_stdout = false
+
+[jobs.test]
+command = ["cargo", "test"]
+need_stdout = true
+
+[jobs.clippy]
+command = ["cargo", "clippy", "--all-targets"]
+need_stdout = false

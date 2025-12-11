@@ -1,0 +1,13 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# 从工作空间继承依赖配置
+axum = { workspace = true }
+tokio = { workspace = true }
+
+# 继承工作空间的 lint 配置
+[lints]
+workspace = true
