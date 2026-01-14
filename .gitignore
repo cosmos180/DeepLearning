@@ -53,6 +53,7 @@ venv.bak/
 python/**/venv/
 python/**/env/
 python/**/ENV/
+python/mcp/grafana/.venv/
 
 # IDE files
 .vscode/

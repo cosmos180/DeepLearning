@@ -1,0 +1,62 @@
+# 腾讯控股DCF估值配置（YAML格式）
+# 使用方式：valuation = ValuationOrchestrator.load_config('tencent.yaml', format='yaml')
+
+company_name: "腾讯控股"
+
+# 基础财务数据（单位：亿元人民币）
+revenue_0: 6100.0              # 2024年营收
+fcf_0: 1800.0                  # 2024年自由现金流
+ebitda_0: 3200.0               # 2024年EBITDA
+net_debt: -1024.0              # 净现金1024亿元（负值表示现金）
+investment_value: 8000.0       # 投资组合价值
+shares_outstanding: 95.0       # 总股本（亿股）
+
+# 预测假设
+forecast_years: 5
+revenue_growth_rates:
+  - 0.14                        # 第1年：14%
+  - 0.12                        # 第2年：12%
+  - 0.10                        # 第3年：10%
+  - 0.08                        # 第4年：8%
+  - 0.06                        # 第5年：6%
+fcf_margins:
+  - 0.31                        # 第1年：31%
+  - 0.31                        # 第2年：31%
+  - 0.31                        # 第3年：31%
+  - 0.32                        # 第4年：32%
+  - 0.32                        # 第5年：32%
+
+# 估值参数
+perpetual_growth_rate: 0.035    # 永续增长率3.5%
+exit_multiple: null
+
+# WACC参数
+risk_free_rate: 0.028          # 无风险利率2.8%
+market_risk_premium: 0.06       # 市场风险溢价6%
+beta: 1.2                       # Beta系数
+cost_of_debt: 0.04              # 债务成本4%
+tax_rate: 0.25                  # 企业所得税率25%
+equity_weight: 0.9              # 股权权重90%
+debt_weight: 0.1                # 债务权重10%
+
+# 其他
+currency_unit: "CNY"
+
+# 敏感性分析范围定义
+sensitivity_ranges:
+  wacc:
+    - 0.085                      # 起始值：8.5%
+    - 0.10                       # 结束值：10%
+    - 0.005                      # 步长：0.5%
+  growth:
+    - 0.03                       # 起始值：3%
+    - 0.04                       # 结束值：4%
+    - 0.0025                     # 步长：0.25%
+  margin:
+    - -0.02                      # 起始值：-2%
+    - 0.02                       # 结束值：+2%
+    - 0.01                       # 步长：1%
+  revenue:
+    - -0.02
+    - 0.02
+    - 0.01

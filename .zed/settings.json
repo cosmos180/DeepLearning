@@ -1,0 +1,95 @@
+{
+  // LSP 配置 - 优先保证 Python 代码跳转
+  "lsp": {
+    "pyright": {
+      "initialization_options": {
+        "python": {
+          "analysis": {
+            "typeCheckingMode": "basic",
+            "autoSearchPaths": true,
+            "useLibraryCodeForTypes": true,
+            "diagnosticMode": "workspace",
+          },
+        },
+      },
+    },
+    "rust-analyzer": {
+      "initialization_options": {
+        "linkedProjects": ["rust/Cargo.toml"],
+      },
+    },
+  },
+
+  // 代码格式化配置
+  "formatter": {
+    "language_server": {
+      "name": "pyright",
+    },
+  },
+
+  // 终端配置
+  "terminal": {
+    "font_family": ".ZedSans",
+    "font_size": 14,
+    "line_height": "comfortable",
+  },
+  // Python 特定配置
+  "languages": {
+    "Python": {
+      "tab_size": 4,
+      "format_on_save": "on",
+      "formatter": "auto",
+      "language_servers": ["pyright"],
+      "prettier": {
+        "allowed": false,
+      },
+      "preferred_line_length": 88,
+    },
+    "Rust": {
+      "tab_size": 4,
+      "soft_wrap": "none",
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "language_servers": ["rust-analyzer"],
+    },
+    "C++": {
+      "tab_size": 2,
+      "soft_wrap": "none",
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "language_servers": ["clangd"],
+    },
+    "Go": {
+      "tab_size": 4,
+      "soft_wrap": "none",
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "language_servers": ["gopls"],
+    },
+  },
+
+  // 文件类型关联
+  "file_types": {
+    "C++": ["*.tcc", "*.def"],
+  },
+
+  // 代码补全配置
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": true,
+    "show_parameter_hints": true,
+  },
+
+  // 主题配置
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "One Dark",
+  },
+
+  // Telemetry
+  "telemetry": {
+    "diagnostics": false,
+    "metrics": false,
+  },
+}

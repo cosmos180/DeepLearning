@@ -1,0 +1,63 @@
+{
+  "company_name": "\u817e\u8baf\u63a7\u80a1",
+  "revenue_0": 6100.0,
+  "fcf_0": 1800.0,
+  "ebitda_0": 3200.0,
+  "net_debt": -1024.0,
+  "investment_value": 8000.0,
+  "shares_outstanding": 95.0,
+  "forecast_years": 5,
+  "revenue_growth_rates": [
+    0.14,
+    0.12,
+    0.1,
+    0.08,
+    0.06
+  ],
+  "fcf_margins": [
+    0.31,
+    0.31,
+    0.31,
+    0.32,
+    0.32
+  ],
+  "ebitda_margins": [
+    0.4,
+    0.405,
+    0.41000000000000003,
+    0.41500000000000004,
+    0.42000000000000004
+  ],
+  "perpetual_growth_rate": 0.035,
+  "exit_multiple": null,
+  "risk_free_rate": 0.028,
+  "market_risk_premium": 0.06,
+  "beta": 1.2,
+  "cost_of_debt": 0.04,
+  "tax_rate": 0.25,
+  "equity_weight": 0.9,
+  "debt_weight": 0.1,
+  "currency_unit": "CNY",
+  "sensitivity_ranges": {
+    "wacc": [
+      0.085,
+      0.1,
+      0.005
+    ],
+    "growth": [
+      0.03,
+      0.04,
+      0.0025
+    ],
+    "margin": [
+      -0.02,
+      0.02,
+      0.01
+    ],
+    "revenue": [
+      -0.02,
+      0.02,
+      0.01
+    ]
+  }
+}

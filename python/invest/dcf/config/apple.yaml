@@ -1,0 +1,61 @@
+# Apple Inc. DCF估值配置（YAML格式）
+
+company_name: "Apple Inc."
+
+# 基础财务数据（单位：十亿美元）
+revenue_0: 383.0               # 2023财年营收
+fcf_0: 100.0                   # 2023年自由现金流
+ebitda_0: 130.0                # 2023年EBITDA
+net_debt: -500.0               # 净现金500亿美元
+investment_value: 0.0          # 无重大投资组合
+shares_outstanding: 15.5       # 总股本155亿股
+
+# 预测假设
+forecast_years: 5
+revenue_growth_rates:
+  - 0.08                        # 第1年：8%
+  - 0.07                        # 第2年：7%
+  - 0.06                        # 第3年：6%
+  - 0.05                        # 第4年：5%
+  - 0.04                        # 第5年：4%
+fcf_margins:
+  - 0.26                        # 第1年：26%
+  - 0.26                        # 第2年：26%
+  - 0.27                        # 第3年：27%
+  - 0.27                        # 第4年：27%
+  - 0.28                        # 第5年：28%
+
+# 估值参数
+perpetual_growth_rate: 0.03    # 永续增长率3%
+exit_multiple: null
+
+# WACC参数（美国市场）
+risk_free_rate: 0.04           # 美国10年期国债收益率4%
+market_risk_premium: 0.055      # 美国市场风险溢价5.5%
+beta: 1.1                       # Beta系数
+cost_of_debt: 0.045             # 债务成本4.5%
+tax_rate: 0.21                  # 美国企业所得税率21%
+equity_weight: 0.85             # 股权权重85%
+debt_weight: 0.15               # 债务权重15%
+
+# 其他
+currency_unit: "USD"
+
+# 敏感性分析范围
+sensitivity_ranges:
+  wacc:
+    - 0.07
+    - 0.09
+    - 0.005
+  growth:
+    - 0.02
+    - 0.04
+    - 0.005
+  margin:
+    - -0.01
+    - 0.01
+    - 0.005
+  revenue:
+    - -0.01
+    - 0.01
+    - 0.005
