@@ -1,0 +1,59 @@
+# ElastAlert 主配置文件
+# ElastAlert Main Configuration
+
+# 规则文件夹路径 - 所有规则 YAML 文件存放位置
+rules_folder: /home/bughero/Documents/github/DeepLearning/python/mcp/grafana/monitoring/elastalert_rules
+
+# 规则扫描频率 - ElastAlert 每隔多久重新加载规则并运行
+run_every:
+  minutes: 1
+
+# 缓冲时间 - 查询时间窗口，确保 ES 数据完整写入
+buffer_time:
+  minutes: 15
+
+# Elasticsearch 连接配置
+es_host: 172.26.2.88
+es_port: 39202
+# es_username: elastic
+# es_password: changeme
+
+# ElastAlert 自身状态写入的索引名称
+writeback_index: elastalert_status
+writeback_alias: elastalert_alerts
+
+# 告警时间限制 - 超过此时长的告警将被忽略
+alert_time_limit:
+  days: 2
+
+# 邮件服务器配置引用
+smtp_host: smtp.gmail.com
+smtp_port: 587
+smtp_ssl: true
+smtp_auth_file: /home/bughero/Documents/github/DeepLearning/python/mcp/grafana/monitoring/config/smtp.yaml
+
+# 邮件发送者信息
+from_addr: elastalert@example.com
+email_reply_to: alerts@example.com
+
+# Elasticsearch 查询配置
+use_ssl: False
+verify_certs: True
+
+# Kibana 配置 - 用于在告警邮件中生成链接
+# kibana_url: https://kibana.example.com
+
+# 日志配置
+log_level: INFO
+
+# 告警聚合配置（可选，在具体规则中覆盖）
+# aggregation:
+#   minutes: 5
+
+# 重新告警间隔（可选，在具体规则中覆盖）
+# realert:
+#   minutes: 30
+
+# 查询延迟 - 等待 ES 数据写入完成
+query_delay:
+  minutes: 1

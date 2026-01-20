@@ -1,7 +1,7 @@
 # Makefile for Grafana MCP Server
 # Usage: make [target]
 
-.PHONY: all install dev run example help test clean lint
+.PHONY: all install dev run example help test clean lint monitoring
 
 # Variables
 PYTHON := python3
@@ -14,6 +14,8 @@ SERVER := server.py
 EXAMPLE := example.py
 CLIENT := client_example.py
 SIMPLE_CLIENT := simple_client.py
+MONITORING_DIR := monitoring
+ELASTALERT_DIR := /opt/elastalert
 
 # Default target
 all: install
@@ -80,6 +82,16 @@ test-list-ds:
 test-query-es:
 	$(PYTHON_VENV) $(SIMPLE_CLIENT) query-es wsnKPH4Nk query='metrics.platform: "sdc"' time_from=now-24h
 
+## Interactive Explorer
+explore:
+	$(PYTHON_VENV) $(SIMPLE_CLIENT) explore
+
+explore-ipc:
+	$(PYTHON_VENV) $(SIMPLE_CLIENT) explore folder=ipc limit=100
+
+explore-all:
+	$(PYTHON_VENV) $(SIMPLE_CLIENT) explore limit=200
+
 ## Run Tests (if tests exist)
 test:
 	$(PYTHON_VENV) -m pytest tests/ -v
@@ -98,6 +110,34 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	rm -rf .pytest_cache .mypy_cache
+
+## Monitoring - Install ElastAlert
+monitor-install:
+	sudo $(MONITORING_DIR)/scripts/install_elastalert.sh
+
+## Monitoring - Validate rules
+monitor-validate:
+	$(PYTHON) $(MONITORING_DIR)/scripts/validate_rules.py --rules-dir $(MONITORING_DIR)/elastalert_rules
+
+## Monitoring - Deploy rules
+monitor-deploy:
+	sudo $(MONITORING_DIR)/scripts/deploy_rules.sh
+
+## Monitoring - Test a rule (usage: make monitor-test RULE=path/to/rule.yaml)
+monitor-test:
+	$(MONITORING_DIR)/scripts/elastalert2.sh test $(RULE)
+
+## Monitoring - Run ElastAlert2 service
+monitor-run:
+	$(MONITORING_DIR)/scripts/elastalert2.sh run
+
+## Monitoring - Run ElastAlert2 in verbose mode
+monitor-run-verbose:
+	$(MONITORING_DIR)/scripts/elastalert2.sh run verbose
+
+## Monitoring - Create ElastAlert index
+monitor-create-index:
+	$(MONITORING_DIR)/scripts/elastalert2.sh create-index
 
 ## Show this help
 help:
@@ -121,6 +161,17 @@ help:
 	@echo "  make test-get-alerts    - Get firing alerts"
 	@echo "  make test-list-ds       - List datasources"
 	@echo "  make test-query-es      - Query Elasticsearch directly"
+	@echo ""
+	@echo "Interactive Explorer:"
+	@echo "  make explore            - Interactive dashboard explorer"
+	@echo "  make explore-ipc        - Explore dashboards in 'ipc' folder"
+	@echo "  make explore-all        - Explore all dashboards (limit=200)"
+	@echo ""
+	@echo "Monitoring (ElastAlert2):"
+	@echo "  make monitor-create-index - Create ElastAlert index"
+	@echo "  make monitor-test RULE   - Test a specific rule"
+	@echo "  make monitor-run         - Start ElastAlert2 service"
+	@echo "  make monitor-run-verbose - Start with verbose output"
 	@echo ""
 	@echo "Development:"
 	@echo "  make test         - Run pytest tests"

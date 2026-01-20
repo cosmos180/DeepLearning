@@ -1,0 +1,50 @@
+# 优化规则：按服务分组的错误率监控
+# Optimized Rule: Error Rate Monitoring by Service
+# 使用聚合查询减少数据传输
+
+name: Error Rate by Service
+type: frequency
+index: tupu-go-log-*
+doc_type: _doc
+
+# 使用聚合查询（在 ES 端聚合，只返回聚合结果）
+use_aggregation: true
+aggregation_type: terms
+aggregation_key: sInfo.app
+
+# 触发阈值：单个服务5分钟内超过50次错误
+num_events: 50
+timeframe:
+  minutes: 5
+
+# 查询条件 - 只查错误级别
+filter:
+- query:
+    query_string:
+        query: 'contents.level:("error" OR "ERROR") AND sInfo.app:*'
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Service Error Rate Alert - {{ sInfo.app }}"
+alert_text: "服务 {{ sInfo.app }} 错误率过高"
+
+# 聚合查询键
+query_key: sInfo.app
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - sInfo.hostname
+  - contents.level
+  - "@timestamp"
+
+# 重复告警间隔（按服务分别告警）
+realert:
+  minutes: 10
+
+# 告警聚合
+aggregation:
+  minutes: 5

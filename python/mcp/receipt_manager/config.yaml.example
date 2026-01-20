@@ -1,0 +1,114 @@
+# 采购收据管理工具配置文件示例
+# 复制此文件到 ~/.config/receipt-manager/config.yaml 并根据需要修改
+
+# Excel配置
+excel:
+  # Excel文件路径
+  file_path: "~/Documents/采购记录.xlsx"
+
+  # Excel模板文件路径 (可选)
+  template_path: null
+
+  # 是否自动备份
+  auto_backup: true
+
+  # 保留备份数量
+  backup_count: 5
+
+# AI识别配置
+ai:
+  # 是否启用AI识别
+  enabled: true
+
+  # API服务提供商
+  provider: "volcengine"
+
+  # API密钥 (可以使用环境变量 ${ARK_API_KEY})
+  api_key: "${ARK_API_KEY}"
+
+  # 模型名称
+  model: "doubao-seed-1-6-251015"
+
+  # 置信度阈值 (0-1)
+  confidence_threshold: 0.8
+
+  # 最大重试次数
+  max_retries: 3
+
+  # 超时时间 (秒)
+  timeout: 120
+
+# OCR配置
+ocr:
+  # 是否启用OCR
+  enabled: true
+
+  # Tesseract可执行文件路径 (可选)
+  tesseract_path: null
+
+  # OCR语言
+  language: "chi_sim+eng"
+
+  # 是否进行图像预处理
+  preprocessing: true
+
+# 数据验证配置
+validation:
+  # 必填字段
+  required_fields:
+    - "date"
+    - "merchant"
+    - "total"
+    - "items"
+
+  # 日期格式
+  date_format: "%Y-%m-%d"
+
+  # 严格金额验证
+  strict_amount_validation: true
+
+  # 允许负金额
+  allow_negative_amount: false
+
+# 存储配置
+storage:
+  # 归档路径
+  archive_path: "~/Documents/receipts/archive"
+
+  # 保留原始文件
+  keep_original: true
+
+  # 压缩归档
+  compress_archive: false
+
+  # 归档命名格式
+  # 可用变量: {date}, {merchant}, {id}
+  archive_format: "{date}_{merchant}_{id}"
+
+# 分类配置
+category:
+  # 默认分类列表
+  default_categories:
+    - "办公用品"
+    - "餐饮"
+    - "交通"
+    - "日用品"
+    - "其他"
+
+  # 自动分类
+  auto_classify: true
+
+# 界面配置
+ui:
+  # 显示进度
+  show_progress: true
+
+  # 彩色输出
+  color_output: true
+
+  # 需要确认的置信度阈值
+  # 当AI识别置信度低于此值时需要人工确认
+  confirm_threshold: 0.8
+
+  # 外部编辑器 (可选)
+  editor: null

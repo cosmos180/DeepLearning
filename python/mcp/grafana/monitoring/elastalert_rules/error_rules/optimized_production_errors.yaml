@@ -1,0 +1,52 @@
+# 优化规则：特定服务错误率告警（按服务分组）
+# Optimized Rule: Per-Service Error Rate Alert
+
+name: Per-Service Error Rate Alert
+type: frequency
+index: tupu-go-log-production-*
+doc_type: _doc
+
+# 针对特定服务的错误监控 - 使用更精确的索引
+index: tupu-go-log-production-*
+
+# 较低的阈值，5分钟内20次错误即告警
+num_events: 20
+timeframe:
+  minutes: 5
+
+# 查询条件 - 针对具体服务 + 错误级别
+filter:
+- query:
+    query_string:
+        query: 'contents.level:"error" AND sInfo.app:"*"'
+
+# 使用 ES 端聚合减少数据量
+use_aggregation: true
+aggregation_type: terms
+aggregation_key: sInfo.app
+
+query_key: sInfo.app
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Service Error Alert - {{ sInfo.app }}"
+alert_text: "服务 {{ sInfo.app }} 在过去5分钟内有 {{ num_hits }} 个错误"
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - sInfo.hostname
+  - contents.level
+  - contents.message
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15
+
+# 告警聚合
+aggregation:
+  minutes: 5

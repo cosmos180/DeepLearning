@@ -1,0 +1,43 @@
+# 优化规则：服务错误数量阈值告警（使用 metric_aggregation）
+# Optimized Rule: Service Error Count Threshold Alert
+
+name: Service Error Count Alert
+type: frequency
+index: tupu-go-log-*
+doc_type: _doc
+
+# 使用 metric_aggregation 在 ES 端统计数量
+use_count_query: true
+query_key: sInfo.app
+
+# 触发阈值 - 单个服务5分钟内超过100次错误
+num_events: 100
+timeframe:
+  minutes: 5
+
+# 查询条件
+filter:
+- query:
+    query_string:
+        query: 'contents.level:"error" AND sInfo.app:*'
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Service Error Count Alert - {{ sInfo.app }}"
+alert_text: "服务 {{ sInfo.app }} 在过去5分钟内错误数量超过100次"
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15
+
+# 告警聚合
+aggregation:
+  minutes: 5

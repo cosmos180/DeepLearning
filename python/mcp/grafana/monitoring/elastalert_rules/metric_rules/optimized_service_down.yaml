@@ -1,0 +1,40 @@
+# 优化规则：服务停止检测（无数据告警）
+# Optimized Rule: Service Down Detection (No Data Alert)
+
+name: Service Down Detection
+type: flatline
+index: tupu-metrics-*
+doc_type: _doc
+
+# 检测过去5分钟内没有数据的服务
+metric_aggregation_key: defaultLabels.app
+max_threshold: 1
+timeframe:
+  minutes: 5
+
+# 查询条件 - 匹配任何指标数据
+filter:
+- exists:
+    field: defaultLabels.app
+    meta: sInfo.env
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Service Down Alert - {{ defaultLabels.app }}"
+alert_text: "服务 {{ defaultLabels.app }} 在过去5分钟内没有上报指标数据"
+
+# 包含字段
+include:
+  - defaultLabels.app
+  - defaultLabels.nodeEnv
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 10
+
+# 告警聚合
+aggregation:
+  minutes: 2

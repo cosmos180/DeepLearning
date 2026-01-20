@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">账单通</string>
+    <string name="tagline">记一笔，懂生活</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_statistics">统计</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Common -->
+    <string name="loading">加载中…</string>
+    <string name="error_unknown">发生未知错误</string>
+    <string name="retry">重试</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="confirm">确认</string>
+
+    <!-- Home -->
+    <string name="home_monthly_expense">本月支出</string>
+    <string name="home_today_expense">今日支出</string>
+    <string name="home_weekly_expense">本周支出</string>
+    <string name="home_category_ranking">分类排行</string>
+    <string name="home_recent_records">最近记录</string>
+    <string name="home_view_more">查看更多</string>
+    <string name="home_no_records">暂无记录</string>
+    <string name="home_add_first_record">点击右下角+号添加第一笔记录</string>
+
+    <!-- Expense -->
+    <string name="expense_add_title">记一笔</string>
+    <string name="expense_amount">金额</string>
+    <string name="expense_select_category">选择分类</string>
+    <string name="expense_note">备注</string>
+    <string name="expense_note_hint">添加备注(可选)</string>
+    <string name="expense_date">日期</string>
+    <string name="expense_time">时间</string>
+    <string name="expense_payment_method">支付方式</string>
+    <string name="expense_list_title">记录</string>
+    <string name="expense_search_hint">搜索备注、分类…</string>
+    <string name="expense_validation_amount_required">请输入金额</string>
+    <string name="expense_validation_amount_invalid">金额必须大于0</string>
+    <string name="expense_validation_category_required">请选择分类</string>
+    <string name="expense_added_success">记录已添加</string>
+    <string name="expense_updated_success">记录已更新</string>
+    <string name="expense_deleted_success">记录已删除</string>
+    <string name="expense_delete_confirm">确定要删除这条记录吗?</string>
+
+    <!-- Category -->
+    <string name="category_title">分类</string>
+    <string name="category_add_title">添加分类</string>
+    <string name="category_name">分类名称</string>
+    <string name="category_icon">图标</string>
+    <string name="category_color">颜色</string>
+    <string name="category_parent">父分类</string>
+    <string name="category_preset">预设分类</string>
+    <string name="category_custom">自定义分类</string>
+    <string name="category_delete_warning">删除分类将转移到\"其他\"分类</string>
+    <string name="category_delete_confirm_with_count">该分类下有%d条记录,确定要删除吗?</string>
+
+    <!-- Statistics -->
+    <string name="statistics_title">统计</string>
+    <string name="statistics_total_expense">总支出</string>
+    <string name="statistics_trend">支出趋势</string>
+    <string name="statistics_category_breakdown">分类占比</string>
+    <string name="statistics_daily">日</string>
+    <string name="statistics_weekly">周</string>
+    <string name="statistics_monthly">月</string>
+    <string name="statistics_no_data">暂无数据</string>
+
+    <!-- Budget -->
+    <string name="budget_title">预算</string>
+    <string name="budget_set_monthly">设置月度预算</string>
+    <string name="budget_set_category">设置分类预算</string>
+    <string name="budget_total">总预算</string>
+    <string name="budget_remaining">剩余</string>
+    <string name="budget_used">已用</string>
+    <string name="budget_status_healthy">健康</string>
+    <string name="budget_status_attention">注意</string>
+    <string name="budget_status_warning">警告</string>
+    <string name="budget_status_overbudget">超支</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_basic">基本设置</string>
+    <string name="settings_currency">货币</string>
+    <string name="settings_decimal_places">小数位数</string>
+    <string name="settings_month_start_day">每月起始日</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_budget_management">预算管理</string>
+    <string name="settings_data_management">数据管理</string>
+    <string name="settings_export_data">导出数据</string>
+    <string name="settings_backup_data">备份数据</string>
+    <string name="settings_restore_data">恢复数据</string>
+    <string name="settings_clear_data">清除数据</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_help_feedback">帮助与反馈</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+
+    <!-- Theme -->
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_system">跟随系统</string>
+
+    <!-- Payment Methods -->
+    <string name="payment_wechat">微信支付</string>
+    <string name="payment_alipay">支付宝</string>
+    <string name="payment_cash">现金</string>
+    <string name="payment_card">银行卡</string>
+    <string name="payment_other">其他</string>
+</resources>

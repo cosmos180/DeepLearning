@@ -1,0 +1,89 @@
+# 示例规则：API 延迟告警
+# Example Rule: API Latency Alert
+
+# 规则名称
+name: API Latency Alert
+
+# 规则类型：frequency
+type: frequency
+
+# Elasticsearch 索引模式
+index: metrics-*
+
+# 触发阈值
+num_events: 10
+
+# 时间窗口：5 分钟内有 10 次慢请求
+timeframe:
+  minutes: 5
+
+# 查询条件 - API 响应时间超过 2 秒
+filter:
+- range:
+    metric.value:
+        gte: 2000
+- term:
+    metric.name: "api.response_time"
+
+# 告警方式
+alert:
+  - email
+
+# 邮件接收者
+email:
+  - "api-team@example.com"
+
+# 邮件主题
+alert_subject: "⚠️ [ALERT] API 延迟过高 - {{ num_hits }} 次慢请求"
+
+# 邮件内容
+alert_text_type: alert_text_jinja
+alert_text: |
+  <h2>⚠️ API 延迟告警</h2>
+  <p>检测到 API 响应时间异常！</p>
+
+  <h3>告警摘要</h3>
+  <ul>
+      <li><strong>慢请求数量:</strong> {{ num_hits }}</li>
+      <li><strong>时间窗口:</strong> 5 分钟</li>
+      <li><strong>响应时间阈值:</strong> ≥ 2000 ms</li>
+      <li><strong>触发时间:</strong> {{ alert_time }}</li>
+  </ul>
+
+  <h3>慢请求详情（前 10 条）</h3>
+  <table border="1" cellpadding="5" style="border-collapse: collapse;">
+      <tr>
+          <th>时间</th>
+          <th>API 端点</th>
+          <th>响应时间</th>
+          <th>状态码</th>
+      </tr>
+  {% for hit in hits[:10] %}
+      <tr>
+          <td>{{ hit._source.get('@timestamp', 'N/A') }}</td>
+          <td>{{ hit._source.get('api.endpoint', 'N/A') }}</td>
+          <td style="color: red;">{{ hit._source.get('metric.value', 'N/A') }} ms</td>
+          <td>{{ hit._source.get('http.status_code', 'N/A') }}</td>
+      </tr>
+  {% endfor %}
+  </table>
+
+  <p><strong>建议操作:</strong></p>
+  <ol>
+      <li>检查后端服务负载</li>
+      <li>查看数据库查询性能</li>
+      <li>检查第三方依赖服务状态</li>
+  </ol>
+
+# 包含字段
+include:
+  - metric.name
+  - metric.value
+  - api.endpoint
+  - http.status_code
+  - service_name
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15

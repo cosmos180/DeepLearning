@@ -1215,10 +1215,19 @@ async def call_tool(tool_name: str, arguments: dict) -> CallToolResult:
                     ]
                 )
             except Exception as e:
+                import traceback
+                error_details = f"Error querying Elasticsearch: {type(e).__name__}"
+                if str(e):
+                    error_details += f": {str(e)}"
+                # Add first few lines of traceback for debugging
+                tb_lines = traceback.format_exc().split('\n')
+                if len(tb_lines) > 2:
+                    error_details += f"\n\nTraceback:\n{''.join(tb_lines[-5:])}"
+                logger.error(f"query_elasticsearch error: {error_details}")
                 return CallToolResult(
                     content=[
                         TextContent(
-                            type="text", text=f"Error querying Elasticsearch: {str(e)}"
+                            type="text", text=error_details
                         )
                     ],
                     isError=True,

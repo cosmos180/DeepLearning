@@ -1,0 +1,66 @@
+# 示例规则：指标阈值告警
+# Example Rule: Metric Threshold Alert
+
+# 规则名称
+name: Metric Threshold Alert
+
+# 规则类型：frequency
+type: frequency
+
+# Elasticsearch 索引模式
+index: metrics-*
+
+# 触发阈值
+num_events: 1
+
+# 时间窗口
+timeframe:
+  minutes: 1
+
+# 查询条件 - 指标值超过阈值
+filter:
+- query:
+    query_string:
+        query: 'type:metric AND metric.name:response_time AND metric.value:>1000'
+
+# 告警方式
+alert:
+  - email
+
+# 邮件接收者
+email:
+  - "ops-team@example.com"
+
+# 邮件主题
+alert_subject: "⚠️ [ALERT] 指标超阈值 - 响应时间过高"
+
+# 邮件内容
+alert_text_type: alert_text_jinja
+alert_text: |
+  <h2>⚠️ 指标超阈值告警</h2>
+  <p>检测到指标值超过设定阈值！</p>
+
+  <h3>告警详情</h3>
+  <table border="1" cellpadding="5" style="border-collapse: collapse;">
+      <tr><th>指标名称</th><td>response_time</td></tr>
+      <tr><th>当前值</th><td style="color: red; font-weight: bold;">{{ num_hits }}</td></tr>
+      <tr><th>阈值</th><td>1000 ms</td></tr>
+      <tr><th>触发时间</th><td>{{ alert_time }}</td></tr>
+  </table>
+
+  <h3>数据样例</h3>
+  {% for hit in hits[:5] %}
+  <p><strong>{{ hit._source.get('@timestamp', 'N/A') }}</strong>: {{ hit._source.get('metric.value', 'N/A') }} ms</p>
+  {% endfor %}
+
+# 包含字段
+include:
+  - metric.name
+  - metric.value
+  - metric.tags
+  - "@timestamp"
+  - service_name
+
+# 重复告警间隔
+realert:
+  minutes: 10

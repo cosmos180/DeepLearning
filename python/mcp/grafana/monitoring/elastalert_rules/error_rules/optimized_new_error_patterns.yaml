@@ -1,0 +1,36 @@
+# 优化规则：新错误模式检测（基数检测）
+# Optimized Rule: New Error Pattern Detection using Cardinality
+
+name: New Error Pattern Detection
+type: cardinality
+index: tupu-go-log-*
+doc_type: _doc
+
+# 当唯一错误消息数量超过阈值时告警
+cardinality_field: contents.message
+max_cardinality: 100
+timeframe:
+  minutes: 15
+
+# 查询条件 - 只查特定环境的错误
+filter:
+- query:
+    query_string:
+        query: 'contents.level:"error" AND sInfo.env:"production"'
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "New Error Patterns Detected"
+alert_text: "在过去15分钟内发现超过100种不同的错误消息"
+
+# 包含字段
+include:
+  - sInfo.app
+  - contents.message
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 30

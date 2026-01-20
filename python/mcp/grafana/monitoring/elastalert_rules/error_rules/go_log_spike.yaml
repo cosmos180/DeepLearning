@@ -1,0 +1,70 @@
+# Go 服务日志激增告警
+# Go Service Log Spike Detection Alert
+
+# 规则名称
+name: Go Service Log Spike Alert
+
+# 规则类型：spike - 检测短时间内日志数量激增
+type: spike
+
+# Elasticsearch 索引模式
+index: tupu-go-log-*
+
+# 查询条件
+filter:
+- query:
+    query_string:
+        query: '_exists_:contents.level'
+
+# 按应用和环境分组
+es_query_key: ["sInfo.app", "sInfo.env"]
+
+# 参考阈值
+threshold_ref: 100
+
+# 当前阈值
+threshold_cur: 500
+
+# 激增倍数 - 当前值超过参考值的 5 倍时告警
+spike_height: 5
+
+# 激增方向：up=增长
+spike_type: up
+
+# 时间窗口
+timeframe:
+  minutes: 5
+
+# 告警方式
+alert:
+  - debug
+  # - email
+
+# 邮件主题
+alert_subject: "⚠️ [SPIKE] {{ sInfo.app }} 日志激增告警"
+
+# 邮件内容
+alert_text_type: alert_text_jinja
+alert_text: |
+  <h2>⚠️ 日志激增告警</h2>
+  <p>检测到短时间内日志数量异常增长！</p>
+
+  <h3>告警详情</h3>
+  <ul>
+      <li><strong>应用:</strong> {{ sInfo.app }}</li>
+      <li><strong>环境:</strong> {{ sInfo.env }}</li>
+      <li><strong>当前数量:</strong> {{ num_hits }} (最近 5 分钟)</li>
+      <li><strong>参考数量:</strong> {{ threshold_ref }} (之前 5 分钟)</li>
+      <li><strong>激增倍数:</strong> {{ spike_height }}x</li>
+  </ul>
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - sInfo.hostname
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 30

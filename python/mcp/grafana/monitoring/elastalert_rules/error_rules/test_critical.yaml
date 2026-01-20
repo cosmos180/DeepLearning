@@ -1,0 +1,37 @@
+# 测试规则 - 关键错误告警
+# Test Rule - Critical Error Alert
+
+name: Critical Error Test Alert
+type: frequency
+index: tupu-go-log-*
+doc_type: _doc
+
+# 高阈值，只测试功能
+num_events: 1000
+timeframe:
+  minutes: 60
+
+# 查询条件 - 匹配错误日志
+filter:
+- query:
+    query_string:
+        query: 'contents.level:("error" OR "ERROR")'
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Critical Error Test"
+alert_text: "检测到致命错误，请检查"
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.hostname
+  - contents.level
+  - contents.message
+  - "@timestamp"
+
+# 短间隔用于测试
+realert:
+  minutes: 5

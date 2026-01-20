@@ -1,0 +1,54 @@
+# Go 服务错误日志告警
+# Go Service Error Log Alert
+
+# 规则名称
+name: Go Service Error Alert
+
+# 规则类型：frequency - 匹配一定数量的错误日志
+type: frequency
+
+# Elasticsearch 索引模式 - 匹配所有 Go 服务日志
+index: tupu-go-log-*
+
+# ES7+ compatibility - doc_type is no longer used in ES7+
+doc_type: _doc
+
+# 触发阈值：5 分钟内出现 10 次错误
+num_events: 10
+
+# 时间窗口：5 分钟
+timeframe:
+  minutes: 5
+
+# 查询条件 - 匹配错误级别日志
+filter:
+- query:
+    query_string:
+        query: 'contents.level:("error" OR "ERROR" OR "fatal" OR "FATAL")'
+
+# 告警方式 - 使用文件告警
+alert:
+  - debug
+
+# 告警主题（用于文件命名）
+alert_subject: "Go Service Error Alert"
+
+# 告警文本
+alert_text: "Go 服务出现错误日志，请检查监控系统"
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - sInfo.hostname
+  - contents.level
+  - contents.message
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15
+
+# 告警聚合
+aggregation:
+  minutes: 5

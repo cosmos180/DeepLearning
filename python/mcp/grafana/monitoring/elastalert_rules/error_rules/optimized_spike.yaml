@@ -1,0 +1,50 @@
+# 优化规则：错误激增检测（使用 ES 聚合）
+# Optimized Rule: Error Spike Detection with Aggregation
+
+name: Error Spike by Service
+type: spike
+index: tupu-go-log-*
+doc_type: _doc
+
+# ES 端聚合，按服务分组
+es_query_key: ["sInfo.app", "sInfo.env"]
+
+# 参考阈值和当前阈值（使用较小的值避免超时）
+threshold_ref: 10
+threshold_cur: 50
+spike_height: 5
+spike_type: up
+
+# 时间窗口 - 较短的窗口
+timeframe:
+  minutes: 5
+
+# 查询条件
+filter:
+- query:
+    query_string:
+        query: 'contents.level:("error" OR "ERROR") AND sInfo.app:*'
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Error Spike Detected - {{ sInfo.app }}"
+
+# 聚合时间范围内的数据
+buffer_time:
+  minutes: 3
+
+# 重复告警间隔（按服务分别告警）
+realert:
+  minutes: 30
+
+# 告警聚合
+aggregation:
+  minutes: 5
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.env
+  - "@timestamp"

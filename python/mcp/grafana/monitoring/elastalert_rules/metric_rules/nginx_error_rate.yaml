@@ -1,0 +1,81 @@
+# Nginx 错误率告警
+# Nginx Error Rate Alert
+
+# 规则名称
+name: Nginx Error Rate Alert
+
+# 规则类型：frequency
+type: frequency
+
+# Elasticsearch 索引模式
+index: tupu-metrics-production-gateway_nginx-*
+
+# 触发阈值：5 分钟内有 20 次非 200 状态码
+num_events: 20
+
+# 时间窗口：5 分钟
+timeframe:
+  minutes: 5
+
+# 查询条件 - HTTP 状态码非 200
+filter:
+- range:
+    metrics.value.h_code:
+        gte: 400
+
+# 告警方式
+alert:
+  - debug
+  # - email
+
+# 邮件主题
+alert_subject: "🔴 [ERROR] Nginx 错误率过高 - {{ num_hits }} 次 HTTP 错误"
+
+# 邮件内容
+alert_text_type: alert_text_jinja
+alert_text: |
+  <h2>🔴 Nginx 错误率告警</h2>
+  <p>检测到 Nginx 网关 HTTP 错误数量异常！</p>
+
+  <h3>告警摘要</h3>
+  <ul>
+      <li><strong>错误请求数量:</strong> {{ num_hits }}</li>
+      <li><strong>时间窗口:</strong> 5 分钟</li>
+      <li><strong>状态码:</strong> ≥ 400</li>
+  </ul>
+
+  <h3>错误请求详情（前 15 条）</h3>
+  <table border="1" cellpadding="5" style="border-collapse: collapse;">
+      <tr>
+          <th>时间</th>
+          <th>URL</th>
+          <th>状态码</th>
+          <th>平均响应时间</th>
+          <th>请求数</th>
+      </tr>
+  {% for hit in hits[:15] %}
+      <tr>
+          <td>{{ hit._source.get('@timestamp', 'N/A') }}</td>
+          <td>{{ hit._source.metrics.value.get('url', 'N/A') }}</td>
+          <td style="color: red; font-weight: bold;">{{ hit._source.metrics.value.get('h_code', 'N/A') }}</td>
+          <td>{{ hit._source.metrics.value.get('avg_dur', 0)|round(3) }}s</td>
+          <td>{{ hit._source.metrics.value.get('req_count', 0) }}</td>
+      </tr>
+  {% endfor %}
+  </table>
+
+# 包含字段
+include:
+  - metrics.value.h_code
+  - metrics.value.url
+  - metrics.value.avg_dur
+  - metrics.value.req_count
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 10
+
+# 告警聚合
+aggregation:
+  minutes: 3

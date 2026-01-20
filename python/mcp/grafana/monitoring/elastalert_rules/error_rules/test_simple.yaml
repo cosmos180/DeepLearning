@@ -1,0 +1,32 @@
+# 简单测试规则 - 任意错误匹配
+# Simple Test Rule - Match Any Error
+
+name: Simple Error Test
+type: any
+index: tupu-go-log-*
+doc_type: _doc
+
+# 查询条件 - 匹配任意错误
+filter:
+- query:
+    query_string:
+        query: 'contents.level:"error"'
+
+# 只取1条记录测试
+query_delay:
+  minutes: 1
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Simple Error Test"
+alert_text: "测试告警触发成功"
+
+# 包含字段
+include:
+  - sInfo.app
+  - sInfo.hostname
+  - contents.level
+  - contents.message
+  - "@timestamp"

@@ -1,0 +1,230 @@
+# Photo Behavior Detection System Configuration
+
+# System Settings
+system:
+  name: "PhotoBehaviorDetection"
+  version: "1.0.0"
+  debug: false
+  log_level: "INFO"
+  seed: 42
+
+# Video Input Configuration
+video:
+  # Supported sources: rtsp, rtmp, file, usb
+  source_type: "file"
+  source_path: "data/sample_videos/test.mp4"
+  # For USB camera
+  camera_id: 0
+  camera_width: 1920
+  camera_height: 1080
+  camera_fps: 30
+  # Frame processing
+  frame_buffer_size: 30
+  processing_fps: 15  # Target FPS for inference
+  skip_frames: 2  # Process every Nth frame
+
+# Model Paths
+models:
+  device_detector:
+    # YOLOv8 Medium
+    model_path: "models/yolov8m.pt"
+    onnx_path: "models/yolov8m.onnx"
+    trt_engine_path: "models/yolov8m.trt"
+    input_size: [640, 640]
+    confidence_threshold: 0.5
+    nms_threshold: 0.45
+    # Device classes to detect
+    classes:
+      - "smartphone"
+      - "camera"
+      - "tablet"
+      - "recording_device"
+
+  person_detector:
+    model_path: "models/yolov8m_person.pt"
+    confidence_threshold: 0.6
+
+  pose_estimator:
+    model_type: "mediapipe"
+    model_complexity: 1  # 0, 1, or 2
+    min_detection_confidence: 0.5
+    min_tracking_confidence: 0.5
+    static_image_mode: false
+
+  action_recognizer:
+    model_path: "models/temporal_action_classifier.pth"
+    input_length: 16  # Number of frames
+    hidden_dim: 256
+    num_layers: 2
+    num_classes: 3  # [no_action, taking_photo, recording]
+    confidence_threshold: 0.7
+
+  fusion_engine:
+    fusion_method: "attention"  # Options: weighted, bayesian, attention, hmm
+    weights:
+      pose: 0.4
+      device: 0.3
+      action: 0.3
+
+# Inference Configuration
+inference:
+  # Device: cuda, cpu, tensorrt
+  device: "cuda"
+  batch_size: 1
+  num_workers: 4
+  half_precision: true  # Use FP16
+  compile_model: false  # Use torch.compile (PyTorch 2.0+)
+
+  # Multi-stage pipeline
+  enable_fast_screening: true
+  screening_model: "yolov8n"  # Use nano model for fast screening
+  screening_threshold: 0.3
+
+  # Post-processing
+  temporal_smoothing: true
+  smoothing_window: 5  # Number of frames for smoothing
+  min_event_duration: 1.0  # Minimum event duration in seconds
+
+# Detection Rules
+detection:
+  # Pose rules
+  pose:
+    min_arm_elevation_angle: 45  # Degrees
+    max_arm_elevation_angle: 150
+    device_height_threshold: 0.1  # Relative to shoulder
+    head_pose_tolerance: 30  # Degrees
+
+  # Spatial rules
+  spatial:
+    max_device_hand_distance: 0.15  # Relative to image width
+    require_person_device_association: true
+
+  # Temporal rules
+  temporal:
+    min_action_frames: 8  # Minimum frames to confirm action
+    max_action_gap: 30  # Maximum gap in frames
+
+# Alert Configuration
+alerts:
+  enabled: true
+  methods:
+    - "api"
+    - "websocket"
+    - "log"
+  alert_threshold: 0.8  # Confidence threshold for alert
+  cooldown_period: 10  # Seconds between alerts for same person
+  alert_types:
+    photo:
+      enabled: true
+      message: "Photo taking detected"
+    video:
+      enabled: true
+      message: "Video recording detected"
+    unknown_device:
+      enabled: true
+      message: "Unknown device detected"
+
+# Output Configuration
+output:
+  visualization:
+    enabled: true
+    show_bboxes: true
+    show_poses: true
+    show_confidence: true
+    show_skeleton: true
+    save_frames: false
+    save_video: true
+    output_path: "output/recordings/"
+
+  logging:
+    save_detections: true
+    save_features: true
+    log_path: "logs/"
+    database_path: "data/detections.db"
+
+  api:
+    host: "0.0.0.0"
+    port: 8000
+    enable_cors: true
+
+  websocket:
+    enabled: true
+    port: 8001
+
+# Data Augmentation (for training)
+augmentation:
+  enabled: false  # Only for training
+  horizontal_flip: true
+  rotation: 15
+  brightness: 0.2
+  contrast: 0.2
+  saturation: 0.2
+  hue: 0.1
+  blur: 0.3
+  gaussian_noise: 0.1
+  cutout: true
+  mixup: 0.2
+  mosaic: 0.5
+
+# Training Configuration
+training:
+  epochs: 100
+  batch_size: 16
+  learning_rate: 0.001
+  optimizer: "adamw"
+  scheduler: "cosine"
+  weight_decay: 0.0001
+  gradient_clip: 1.0
+  early_stopping:
+    enabled: true
+    patience: 10
+    min_delta: 0.001
+
+  validation:
+    split: 0.2
+    interval: 5  # Validate every N epochs
+
+  checkpoint:
+    save_best: true
+    save_last: true
+    interval: 10  # Save every N epochs
+
+# Evaluation Configuration
+evaluation:
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1"
+    - "mAP"
+  iou_thresholds: [0.5, 0.75]
+  temporal_iou: true
+  visualize_errors: true
+
+# Hardware Optimization
+optimization:
+  # TensorRT
+  tensorrt:
+    enabled: false
+    fp16: true
+    int8: false
+    workspace_size: 1073741824  # 1GB
+
+  # Quantization
+  quantization:
+    enabled: false
+    method: "ptq"  # ptq or qat
+    calibration_dataset: "data/calibration/"
+
+  # Pruning
+  pruning:
+    enabled: false
+    method: "structured"
+    sparsity: 0.3
+
+# Edge Deployment
+edge:
+  platform: "jetson"  # Options: jetson, coral, cpu
+  model_format: "tensorrt"
+  power_mode: "MAX_P"  # MAX_P, PINE, LOW_POWER
+  camera_api: "gstreamer"  # gstreamer, v4l2, opencv

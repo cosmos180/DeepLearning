@@ -1,0 +1,78 @@
+# 示例规则：高错误率告警
+# Example Rule: High Error Rate Alert
+
+# 规则名称
+name: High Error Rate Alert
+
+# 规则类型：frequency
+type: frequency
+
+# Elasticsearch 索引模式
+index: logs-*
+
+# 触发阈值：在 5 分钟内错误数量超过 100
+num_events: 100
+
+# 时间窗口：5 分钟
+timeframe:
+  minutes: 5
+
+# 查询条件 - 匹配错误级别日志
+filter:
+- query:
+    query_string:
+        query: 'level:ERROR AND service_name:*'
+
+# 使用聚合进行分组统计
+use_strftime_index: true
+
+# 告警方式
+alert:
+  - email
+
+# 邮件接收者
+email:
+  - "ops-team@example.com"
+
+# 邮件主题
+alert_subject: "⚠️ [WARNING] 高错误率告警 - {0} 服务"
+alert_subject_args:
+  - service_name
+
+# 邮件内容
+alert_text_type: alert_text_jinja
+alert_text: |
+  <h2>⚠️ 高错误率告警</h2>
+  <p>检测到服务错误率超过阈值！</p>
+
+  <h3>告警摘要</h3>
+  <table border="1" cellpadding="5" style="border-collapse: collapse; background: #fff3e0;">
+      <tr><th>服务名称</th><td>{{ service_name }}</td></tr>
+      <tr><th>错误数量</th><td style="color: red; font-weight: bold;">{{ num_hits }}</td></tr>
+      <tr><th>时间窗口</th><td>5 分钟</td></tr>
+      <tr><th>阈值</th><td>100</td></tr>
+      <tr><th>触发时间</th><td>{{ alert_time }}</td></tr>
+  </table>
+
+  <h3>错误分布（前 10 条）</h3>
+  <ul>
+  {% for hit in hits[:10] %}
+      <li>
+          <strong>{{ hit._source.get('@timestamp', 'N/A') }}</strong>:
+          {{ hit._source.get('message', 'N/A') }}
+      </li>
+  {% endfor %}
+  </ul>
+
+  <p><a href="{{ kibana_url }}">在 Kibana 中查看完整日志 →</a></p>
+
+# 包含字段
+include:
+  - service_name
+  - level
+  - message
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15

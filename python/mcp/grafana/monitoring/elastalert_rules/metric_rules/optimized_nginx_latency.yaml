@@ -1,0 +1,50 @@
+# 优化规则：Nginx 延迟监控（聚合查询）
+# Optimized Rule: Nginx Latency Monitoring with Aggregation
+
+name: Nginx High Latency Alert
+type: frequency
+index: tupu-metrics-production-*
+doc_type: _doc
+
+# 使用聚合查询减少数据量
+use_aggregation: true
+aggregation_type: avg
+aggregation_key: metrics.value.url
+
+# 5分钟内平均响应时间超过1秒的请求超过10次
+num_events: 10
+timeframe:
+  minutes: 5
+
+# 查询条件 - 过滤出高延迟请求
+filter:
+- range:
+    metrics.value.avg_dur:
+        gte: 1.0
+
+# 告警方式
+alert:
+  - debug
+
+alert_subject: "Nginx High Latency Alert"
+alert_text: "检测到高延迟请求，平均响应时间 > 1秒"
+
+# 聚合字段
+query_key: metrics.value.url
+
+# 包含字段
+include:
+  - metrics.value.url
+  - metrics.value.avg_dur
+  - metrics.value.req_count
+  - metrics.value.h_code
+  - defaultLabels.app
+  - "@timestamp"
+
+# 重复告警间隔
+realert:
+  minutes: 15
+
+# 告警聚合
+aggregation:
+  minutes: 5
