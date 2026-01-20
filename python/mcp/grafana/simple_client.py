@@ -404,7 +404,7 @@ class DataFormatter:
 
 DEFAULT_CONFIG = {
     "grafana_url": "https://g.dev.tuputech.com",
-    "api_key": "",
+    "api_key": "",  # Set via environment variable GRAFANA_API_KEY
     "dashboard_uid": "urJcwIvHz",
 }
 
