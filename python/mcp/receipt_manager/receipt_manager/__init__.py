@@ -261,6 +261,7 @@ def create_receipt(
     title: str,
     delivery_date: date,
     purchaser: str = "梁程程妈妈",
+    source_file: Optional[str] = None,
 ) -> PurchaseReceipt:
     """
     创建收据
@@ -269,6 +270,7 @@ def create_receipt(
         title: 主题标题
         delivery_date: 交付日期
         purchaser: 采购方
+        source_file: 原始图片路径
 
     Returns:
         新的PurchaseReceipt实例
@@ -277,6 +279,7 @@ def create_receipt(
         title=title,
         delivery_date=delivery_date,
         purchaser=purchaser,
+        source_file=source_file,
     )
 
 

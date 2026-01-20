@@ -84,7 +84,7 @@ add:
 		echo "export ARK_API_KEY='your-api-key'"; \
 		exit 1; \
 	fi
-	python -m receipt_manager.cli add "$(IMG)" -e "$(EXCEL_FILE)" $(if $(TITLE),-t "$(TITLE)",)
+	python -m receipt_manager.cli -e "$(EXCEL_FILE)" add "$(shell bash -c 'echo $(IMG)')" $(if $(TITLE),-t "$(TITLE)",)
 
 # 添加收据 (手动输入)
 add-manual:
@@ -93,7 +93,7 @@ add-manual:
 		echo "用法: make add-manual IMG=<path> [TITLE=<title>]"; \
 		exit 1; \
 	fi
-	python -m receipt_manager.cli add "$(IMG)" --no-ai -e "$(EXCEL_FILE)" $(if $(TITLE),-t "$(TITLE)",)
+	python -m receipt_manager.cli -e "$(EXCEL_FILE)" add "$(shell bash -c 'echo $(IMG)')" --no-ai $(if $(TITLE),-t "$(TITLE)",)
 
 # 手动创建收据
 manual:
@@ -102,12 +102,12 @@ manual:
 		echo "用法: make manual TITLE=<title>"; \
 		exit 1; \
 	fi
-	python -m receipt_manager.cli manual "$(TITLE)" -e "$(EXCEL_FILE)" $(if $(DATE),-d "$(DATE)",)
+	python -m receipt_manager.cli -e "$(EXCEL_FILE)" manual "$(TITLE)" $(if $(DATE),-d "$(DATE)",)
 
 # 查看收据列表
 list:
-	python -m receipt_manager.cli list -e "$(EXCEL_FILE)"
+	python -m receipt_manager.cli -e "$(EXCEL_FILE)" list
 
 # 导出数据
 export:
-	python -m receipt_manager.cli export -e "$(EXCEL_FILE)"
+	python -m receipt_manager.cli -e "$(EXCEL_FILE)" export

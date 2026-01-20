@@ -202,12 +202,12 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # 运行示例
-    example_create_receipt()
-    example_save_to_excel()
-    example_read_from_excel()
-    # example_ai_recognize()  # 需要API密钥
-    example_statistics()
-    example_json_export()
+    # example_create_receipt()
+    # example_save_to_excel()
+    # example_read_from_excel()
+    example_ai_recognize()  # 需要API密钥
+    # example_statistics()
+    # example_json_export()
 
     print("\n" + "=" * 60)
     print("示例运行完成")

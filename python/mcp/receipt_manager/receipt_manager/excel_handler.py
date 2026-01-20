@@ -5,20 +5,55 @@ Excel处理模块
 """
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from datetime import date
 from decimal import Decimal
 import shutil
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-    from openpyxl.utils import get_column_letter
+    from openpyxl.drawing.image import Image
 except ImportError:
     raise ImportError(
         "需要安装 openpyxl: pip install openpyxl"
     )
+
+
+# 样式定义
+class Styles:
+    """Excel样式定义"""
+
+    # 细边框
+    THIN_BORDER = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000'),
+    )
+
+    # 标题样式
+    TITLE_FONT = Font(size=16, bold=True)
+    TITLE_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+
+    # 表头样式
+    HEADER_FONT = Font(bold=True, size=11)
+    HEADER_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+    HEADER_FILL = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')
+
+    # 数据行样式（居中对齐）
+    DATA_FONT = Font(size=11)
+    DATA_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+
+    # 总计行样式
+    TOTAL_FONT = Font(bold=True, size=11)
+
+    # 金额格式（带人民币符号）
+    CURRENCY_FORMAT = '¥#,##0.00'
 
 from . import PurchaseReceipt, PurchaseItem
 
@@ -121,86 +156,189 @@ class ExcelHandler:
 
     def _create_sheet(self, ws, receipt: PurchaseReceipt):
         """
-        创建新Sheet
+        创建新Sheet - 业界最佳实践布局
 
-        Sheet布局：
-        第1行: 主题标题
-        第2行: 采购方信息
-        第3行: (空)
-        第4行: 表头
-        第5行起: 商品明细
-        倒数第2行: 总计
-        最后1行: 交付信息
+        布局设计：
+        第1行: 收据标题（居中，大字体）
+        第2行: 采购方信息（左侧标签，右侧内容）
+        第3行: 空行（分隔）
+        第4行: 表头（灰色背景，居中）
+        第5行起: 商品明细（带边框）
+        倒数第2行: 总计（加粗）
+        最后1行: 交付信息（分列显示）
+
+        对齐原则：
+        - 文本内容：左对齐
+        - 数值内容：右对齐
+        - 表头：居中对齐
         """
-        # 1. 标题行 (第1行)
-        ws.merge_cells("A1:T1")
+        # ========== 1. 标题区域 ==========
+        ws.merge_cells("A1:H1")
         ws["A1"] = receipt.title
-        ws["A1"].font = Font(size=16, bold=True)
-        ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+        ws["A1"].font = Styles.TITLE_FONT
+        ws["A1"].alignment = Styles.TITLE_ALIGNMENT
+        ws.row_dimensions[1].height = 35
 
-        # 2. 采购方信息 (第2行)
-        ws["A2"] = "采购方：_____________________ 联系方式："
+        # ========== 2. 采购方信息（分列布局）==========
+        ws["A2"] = "采购方："
         ws["B2"] = receipt.purchaser
-        ws["A2"].font = Font(size=11)
-        ws["B2"].font = Font(size=11)
+        ws["D2"] = "日期："
+        ws["E2"] = receipt.delivery_date.strftime("%Y年%m月%d日")
 
-        # 3. 表头 (第4行)
-        headers = ["序号", "商品名称", "规格型号", "单位", "采购数量", "单价（元）", "金额（元）", "备注"]
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=4, column=col, value=header)
-            cell.font = Font(bold=True, size=11)
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+        # 设置采购方信息样式
+        for cell in [ws["A2"], ws["B2"], ws["D2"], ws["E2"]]:
+            cell.font = Styles.DATA_FONT
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+        # 标签加粗
+        ws["A2"].font = Font(size=11, bold=True)
+        ws["D2"].font = Font(size=11, bold=True)
 
-        # 4. 商品明细 (第5行起)
+        # ========== 3. 空行分隔 ==========
+        ws.row_dimensions[3].height = 10
+
+        # ========== 4. 表头行 ==========
+        headers = ["序号", "商品名称", "规格型号", "单位", "数量", "单价", "金额", "备注"]
+        header_range = f"A4:H4"
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=4, column=col_idx, value=header)
+            cell.font = Styles.HEADER_FONT
+            cell.alignment = Styles.HEADER_ALIGNMENT
+            cell.fill = Styles.HEADER_FILL
+            cell.border = Styles.THIN_BORDER
+        ws.row_dimensions[4].height = 25
+
+        # ========== 5. 商品明细 ==========
         row = 5
         for item in receipt.items:
+            # 序号 - 居中
             ws[f"A{row}"] = item.sequence
+            ws[f"A{row}"].alignment = Alignment(horizontal="center", vertical="center")
+
+            # 商品名称 - 左对齐
             ws[f"B{row}"] = item.name
+            ws[f"B{row}"].alignment = Alignment(horizontal="left", vertical="center")
+
+            # 规格型号 - 左对齐
             ws[f"C{row}"] = item.spec or ""
+            ws[f"C{row}"].alignment = Alignment(horizontal="left", vertical="center")
+
+            # 单位 - 居中
             ws[f"D{row}"] = item.unit
+            ws[f"D{row}"].alignment = Alignment(horizontal="center", vertical="center")
+
+            # 数量 - 右对齐
             ws[f"E{row}"] = float(item.quantity)
+            ws[f"E{row}"].alignment = Alignment(horizontal="right", vertical="center")
+
+            # 单价 - 右对齐，货币格式
             ws[f"F{row}"] = float(item.unit_price)
+            ws[f"F{row}"].number_format = Styles.CURRENCY_FORMAT
+            ws[f"F{row}"].alignment = Alignment(horizontal="right", vertical="center")
 
-            # 金额公式
+            # 金额 - 右对齐，公式+货币格式
             ws[f"G{row}"] = f"=E{row}*F{row}"
-            ws[f"G{row}"].number_format = "#,##0.00"
+            ws[f"G{row}"].number_format = Styles.CURRENCY_FORMAT
+            ws[f"G{row}"].alignment = Alignment(horizontal="right", vertical="center")
 
+            # 备注 - 左对齐
             ws[f"H{row}"] = item.remark or ""
+            ws[f"H{row}"].alignment = Alignment(horizontal="left", vertical="center")
 
+            # 统一设置字体和边框
+            for col in range(1, 9):
+                cell = ws.cell(row=row, column=col)
+                cell.font = Styles.DATA_FONT
+                cell.border = Styles.THIN_BORDER
+
+            ws.row_dimensions[row].height = 22
             row += 1
 
-        # 5. 总计行 (倒数第2行)
-        ws[f"A{row}"] = "总计金额"
-        ws[f"A{row}"].font = Font(bold=True)
+        # ========== 6. 总计行 ==========
+        ws.merge_cells(f"A{row}:F{row}")
+        ws[f"A{row}"] = "总    计"
+        ws[f"A{row}"].font = Styles.TOTAL_FONT
+        ws[f"A{row}"].alignment = Alignment(horizontal="center", vertical="center")
+        ws[f"A{row}"].border = Styles.THIN_BORDER
+
         ws[f"G{row}"] = f"=SUM(G5:G{row-1})"
-        ws[f"G{row}"].font = Font(bold=True)
-        ws[f"G{row}"].number_format = "#,##0.00"
+        ws[f"G{row}"].font = Styles.TOTAL_FONT
+        ws[f"G{row}"].number_format = Styles.CURRENCY_FORMAT
+        ws[f"G{row}"].alignment = Alignment(horizontal="right", vertical="center")
+        ws[f"G{row}"].border = Styles.THIN_BORDER
 
-        # 6. 交付信息 (最后1行)
+        ws[f"H{row}"].border = Styles.THIN_BORDER
+        ws.row_dimensions[row].height = 25
+
+        # ========== 7. 交付信息（分列）==========
         row += 1
-        delivery_date_str = receipt.delivery_date.strftime("%Y-%-m-%-d")
-        ws[f"A{row}"] = f"交付日期：{delivery_date_str}    付款方式：{receipt.payment_method}"
-        ws[f"A{row}"].font = Font(size=10)
+        ws["A" + str(row)] = "交付日期："
+        ws["B" + str(row)] = receipt.delivery_date.strftime("%Y年%m月%d日")
+        ws["D" + str(row)] = "付款方式："
+        ws["E" + str(row)] = receipt.payment_method
 
-        # 7. 设置列宽
+        # 设置样式
+        for col in ["A", "B", "D", "E"]:
+            cell = ws[f"{col}{row}"]
+            cell.font = Font(size=10)
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+        # 标签加粗
+        ws[f"A{row}"].font = Font(size=10, bold=True)
+        ws[f"D{row}"].font = Font(size=10, bold=True)
+
+        ws.row_dimensions[row].height = 20
+
+        # ========== 8. 插入原始收据图片（表格下方）==========
+        image_row = row + 2  # 在交付信息后空一行
+
+        if receipt.source_file:
+            image_path = Path(receipt.source_file)
+            if image_path.exists():
+                try:
+                    # 加载图片
+                    img = Image(str(image_path))
+
+                    # 设置图片大小（保持比例，限制最大宽度）
+                    max_width = 500  # 像素，加宽以适应表格宽度
+                    if img.width > max_width:
+                        ratio = max_width / img.width
+                        img.width = max_width
+                        img.height = int(img.height * ratio)
+
+                    # 将图片放在表格下方
+                    img.anchor = f"A{image_row}"
+                    ws.add_image(img)
+
+                    # 添加"原始凭证"标题
+                    ws[f"A{image_row}"] = "原始凭证"
+                    ws[f"A{image_row}"].font = Font(size=12, bold=True)
+                    ws[f"A{image_row}"].alignment = Alignment(horizontal="left")
+
+                    # 设置图片所在行的高度
+                    ws.row_dimensions[image_row].height = 20  # 标题行高度
+                    image_row += 1
+                    # 预留图片空间（每行约15像素，动态计算）
+                    img_height_rows = max(15, int(img.height / 15) + 2)
+                    for r in range(image_row, image_row + img_height_rows):
+                        if r not in ws.row_dimensions:
+                            ws.row_dimensions[r].height = 15
+
+                    logger.info(f"✓ 已插入收据图片: {image_path.name}")
+                except Exception as e:
+                    logger.warning(f"插入图片失败: {e}")
+
+        # ========== 9. 设置列宽 ==========
         column_widths = {
-            "A": 6,   # 序号
-            "B": 30,  # 商品名称
-            "C": 15,  # 规格型号
-            "D": 8,   # 单位
-            "E": 12,  # 采购数量
-            "F": 12,  # 单价
-            "G": 12,  # 金额
-            "H": 20,  # 备注
+            "A": 8,    # 序号
+            "B": 35,   # 商品名称（加宽）
+            "C": 18,   # 规格型号
+            "D": 10,   # 单位
+            "E": 12,   # 数量
+            "F": 14,   # 单价
+            "G": 14,   # 金额
+            "H": 25,   # 备注
         }
         for col, width in column_widths.items():
             ws.column_dimensions[col].width = width
-
-        # 8. 设置行高
-        ws.row_dimensions[1].height = 30  # 标题行
-        for r in range(4, row + 1):
-            ws.row_dimensions[r].height = 20  # 数据行
 
     def _update_sheet(self, ws, receipt: PurchaseReceipt):
         """
@@ -243,7 +381,7 @@ class ExcelHandler:
         # 2. 读取采购方
         purchaser = ws["B2"].value or self.DEFAULT_PURCHASER
 
-        # 3. 读取交付日期（从最后一行）
+        # 3. 读取交付日期（从最后一行的A列）
         last_row = ws.max_row
         delivery_info = ws[f"A{last_row}"].value or ""
         delivery_date = self._parse_delivery_date(delivery_info)

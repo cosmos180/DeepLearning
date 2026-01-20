@@ -87,50 +87,48 @@ class FileWithProgress(io.IOBase):
 
 
 # Prompt模板
-RECEIPT_RECOGNITION_PROMPT = """请仔细分析这张采购收据图片，提取出所有关键信息。
+RECEIPT_RECOGNITION_PROMPT = """你是一个专业的采购收据识别助手。请仔细分析这张收据图片，准确提取所有关键信息。
+
+【重要提示】
+1. 图片可能被旋转或倒置，请自动识别并正确解读所有内容
+2. 以下字段必须100%准确：delivery_date（日期）、quantity（数量）、unit_price（单价）、amount（金额）
+3. 金额可以通过 数量×单价 来验证，如果不一致请仔细核对
 
 请提取以下信息并以JSON格式输出：
 
-1. title: 主题标题（这次采购的主题名称，如"数学资料打印"、"教室布置"等）
+1. title: 主题标题（提取收据上的主题或商户名称，如"恒达图文数码快印"）
 
 2. delivery_date: 交付日期（格式：YYYY-M-D，如2025-1-20）
+   - 优先识别收据上的日期
+   - 注意区分"开票日期"和"交付日期"
+   - 如果是中文格式（2025年1月20日），请转换为YYYY-M-D
 
-3. items: 商品清单数组，每个商品包含：
-   - sequence: 序号（从1开始）
-   - name: 商品名称
-   - spec: 规格型号（如果有）
-   - unit: 单位（份、个、箱、本、人、套、张、支等）
-   - quantity: 数量（数字）
-   - unit_price: 单价（数字）
-   - amount: 金额（数字，通常等于数量×单价）
-   - remark: 备注（如果没有则为空字符串）
+3. items: 商品清单数组，每个商品必须包含：
+   - sequence: 序号（从1开始，按表格顺序）
+   - name: 商品名称（完整名称，不要缩写）
+   - spec: 规格型号（如果有，如"A4"、"8开"等）
+   - unit: 单位（份、个、箱、本、套、张、支、包、kg等）
+   - quantity: 数量（**务必准确**，纯数字）
+   - unit_price: 单价（**务必准确**，纯数字，单位：元）
+   - amount: 金额（**务必准确**，纯数字，单位：元）
+   - remark: 备注（空字符串""如果没有）
 
-4. confidence: 识别置信度（0-1之间的数字，表示识别的可靠程度）
+4. confidence: 识别置信度（0-1之间，关键数据准确时给高置信度）
 
-输出格式示例：
+输出格式（只输出JSON，不要有其他文字）：
 ```json
 {
-  "title": "数学资料打印",
+  "title": "恒达图文数码快印",
   "delivery_date": "2025-1-20",
   "items": [
     {
       "sequence": 1,
-      "name": "数学练习册",
-      "spec": "A4",
-      "unit": "本",
-      "quantity": 30,
-      "unit_price": 5.00,
-      "amount": 150.00,
-      "remark": ""
-    },
-    {
-      "sequence": 2,
-      "name": "试卷纸",
-      "spec": "8开",
+      "name": "语文资料",
+      "spec": "",
       "unit": "份",
-      "quantity": 50,
-      "unit_price": 0.50,
-      "amount": 25.00,
+      "quantity": 47,
+      "unit_price": 6.0,
+      "amount": 282.0,
       "remark": ""
     }
   ],
@@ -138,13 +136,12 @@ RECEIPT_RECOGNITION_PROMPT = """请仔细分析这张采购收据图片，提取
 }
 ```
 
-注意事项：
-1. 主题标题要简洁明了，提取核心内容
-2. 日期格式必须是YYYY-M-D（如2025-1-20，不是2025-01-20）
-3. 单位必须是常见的：份、个、箱、本、人、套、张、支、包等
-4. 置信度（confidence）表示识别的可靠程度（0-1之间的数字）
-5. 只输出JSON，不要有其他说明文字或思考过程
-6. 如果某些信息无法识别，请根据上下文合理推断
+【核对清单】
+- 日期格式正确吗？YYYY-M-D格式
+- 数量准确吗？与收据一致
+- 单价准确吗？与收据一致
+- 金额准确吗？验证：数量 × 单价 = 金额
+- 单位正确吗？使用收据上的单位
 """
 
 
@@ -299,30 +296,95 @@ class AIRecognizer:
         解析模型响应
 
         Args:
-            response: 模型响应
+            response: 模型响应 (Response 对象)
             source_file: 源文件路径
 
         Returns:
             (收据数据, 置信度)
         """
-        # 获取响应文本
-        response_text = (
-            response.output_text if hasattr(response, "output_text") else str(response)
-        )
+        # 从 Response 对象中提取文本内容
+        response_text = ""
 
-        # 提取JSON
-        json_match = re.search(r"\{[\s\S]*\}", response_text)
+        # 先打印完整的响应结构用于调试
+        logger.info(f"响应类型: {type(response)}")
+        logger.info(f"响应属性: {dir(response)}")
+
+        # 遍历 output 数组提取文本
+        if hasattr(response, "output") and response.output:
+            logger.info(f"输出数组长度: {len(response.output)}")
+            for i, item in enumerate(response.output):
+                logger.info(f"Output[{i}] 类型: {type(item)}, 属性: {dir(item)}")
+
+                # 检查是否有 content 属性
+                if hasattr(item, "content"):
+                    logger.info(f"Output[{i}].content: {item.content}")
+                    for content_item in item.content:
+                        if hasattr(content_item, "text"):
+                            response_text += content_item.text
+                            logger.info(f"找到文本: {content_item.text[:100]}...")
+
+                # 检查是否有 summary 属性 (推理步骤)
+                if hasattr(item, "summary"):
+                    logger.info(f"Output[{i}] 有 summary，跳过推理步骤")
+
+                # 检查是否有 type 属性
+                if hasattr(item, "type"):
+                    logger.info(f"Output[{i}].type: {item.type}")
+
+        # 如果没有提取到内容，使用原始方式
+        if not response_text:
+            logger.warning("未能从 output 中提取内容，使用 str(response)")
+            response_text = str(response)
+
+        logger.info(f"完整响应文本: {response_text}")
+
+        # 查找完整的 JSON 对象（包含 items 数组）
+        # 使用更精确的正则表达式匹配
+        json_pattern = r'\{\s*"title".*?"items".*?\[\s*\{.*?\}\s*\].*?\}'
+        json_match = re.search(json_pattern, response_text, re.DOTALL)
+
         if not json_match:
-            raise ValueError("响应中未找到JSON数据")
+            # 尝试更宽松的匹配
+            json_match = re.search(r'\{[\s\S]*?"title"[\s\S]*?\}', response_text)
 
-        data = json.loads(json_match.group())
+        if not json_match:
+            logger.error(f"无法从响应中提取完整JSON")
+            logger.error(f"响应内容: {response_text}")
+            raise ValueError("响应中未找到完整JSON数据，请检查 Prompt 格式要求")
+
+        json_str = json_match.group()
+        logger.info(f"提取的JSON: {json_str}")
+
+        # 尝试解析JSON
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析失败: {e}")
+            logger.error(f"JSON内容: {json_str}")
+
+            # 尝试清理和修复常见问题
+            cleaned = json_str
+            # 移除尾部逗号
+            cleaned = re.sub(r',\s*}', '}', cleaned)
+            cleaned = re.sub(r',\s*]', ']', cleaned)
+
+            try:
+                data = json.loads(cleaned)
+            except json.JSONDecodeError as e2:
+                logger.error(f"清理后仍然无法解析: {e2}")
+                raise ValueError(f"JSON解析失败: {e}")
 
         # 解析标题
         title = data.get("title", "未命名采购")
 
-        # 解析日期
-        delivery_date_str = data.get("delivery_date", date.today().isoformat())
-        delivery_date = self._parse_date(delivery_date_str)
+        # 解析日期（处理 null 或缺失的情况）
+        delivery_date_str = data.get("delivery_date")
+        if not delivery_date_str:
+            # 如果 AI 没有识别出日期，使用今天
+            logger.warning("AI 未识别出日期，使用当前日期")
+            delivery_date = date.today()
+        else:
+            delivery_date = self._parse_date(delivery_date_str)
 
         # 解析商品列表
         items_data = data.get("items", [])
