@@ -8,20 +8,24 @@ import sys
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from datetime import date
+from decimal import Decimal
 
 import click
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 from . import PurchaseReceipt, create_receipt
 from .excel_handler import ExcelHandler
 from .ai_ocr import AIRecognizer, recognize_receipt
 
 logger = logging.getLogger(__name__)
+
+# 支持的图片格式
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff'}
 
 
 # 初始化控制台
@@ -390,6 +394,266 @@ def manual(ctx, title, date, purchaser):
         handler.close()
 
         console.print(f"\n[bold green]✓ 收据已保存到: {receipt.sheet_name}[/bold green]\n")
+
+
+@cli.command("batch")
+@click.argument("folder", type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.option(
+    "--pattern", "-p",
+    default="*",
+    help="文件匹配模式，如 *.jpg",
+)
+@click.option(
+    "--recursive", "-r",
+    is_flag=True,
+    help="递归处理子文件夹",
+)
+@click.option(
+    "--no-ai",
+    is_flag=True,
+    help="跳过AI识别，手动输入",
+)
+@click.option(
+    "--interactive", "-i",
+    is_flag=True,
+    help="交互模式，逐个确认每个收据",
+)
+@click.option(
+    "--continue-on-error",
+    is_flag=True,
+    help="遇到错误时继续处理",
+)
+@click.pass_context
+def batch(ctx, folder, pattern, recursive, no_ai, interactive, continue_on_error):
+    """
+    批量处理收据图片
+
+    默认自动保存所有识别结果，AI识别失败的会创建占位收据待后续补全。
+    使用 --interactive 进入交互模式逐个确认。
+
+    示例:
+        receipt-manager batch ./receipts
+        receipt-manager batch ./receipts --pattern "*.jpg"
+        receipt-manager batch ./receipts --recursive
+        receipt-manager batch ./receipts --interactive
+    """
+    excel_file = ctx.obj["excel_file"]
+    api_key = ctx.obj["api_key"]
+
+    folder_path = Path(folder).expanduser()
+
+    # 查找图片文件
+    images = _find_images(folder_path, pattern, recursive)
+
+    if not images:
+        console.print(f"[yellow]在 {folder} 中未找到图片文件[/yellow]")
+        sys.exit(0)
+
+    console.print(f"\n[bold cyan]找到 {len(images)} 个图片文件[/bold cyan]\n")
+
+    # 显示文件列表
+    for i, img in enumerate(images, 1):
+        console.print(f"  {i}. {img.name}")
+
+    mode_text = "交互模式" if interactive else "自动模式（所有识别结果将直接保存）"
+    console.print(f"\n[dim]处理模式: {mode_text}[/dim]")
+
+    if not click.confirm("\n开始批量处理？"):
+        console.print("[yellow]已取消[/yellow]")
+        sys.exit(0)
+
+    # 统计
+    success_count = 0
+    failed_count = 0
+    needs_review_count = 0
+    failed_files: List[str] = []
+
+    # 批量处理
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console,
+    ) as progress:
+
+        task = progress.add_task("[cyan]处理收据...", total=len(images))
+
+        for image_path in images:
+            progress.update(task, description=f"[cyan]处理: {image_path.name}")
+
+            try:
+                receipt = None
+                confidence = 0.0
+                status = ""  # 状态标识
+
+                if no_ai:
+                    # 手动输入模式
+                    console.print(f"\n[bold cyan]处理: {image_path.name}[/bold cyan]")
+                    receipt = _manual_input(str(image_path), None, None)
+                    status = "手动输入"
+
+                else:
+                    # AI识别模式
+                    receipt, confidence = recognize_receipt(
+                        str(image_path),
+                        api_key=api_key,
+                    )
+
+                    if receipt is None:
+                        # AI识别失败，创建占位收据
+                        console.print(f"[yellow]⚠ {image_path.name}: AI识别失败，创建占位收据[/yellow]")
+                        receipt = _create_placeholder_receipt(image_path)
+                        confidence = 0.0
+                        status = "待补全"
+                        needs_review_count += 1
+                    elif confidence < 0.7:
+                        status = "需核对"
+                        needs_review_count += 1
+                    else:
+                        status = "已识别"
+
+                # 显示识别结果摘要
+                console.print(f"\n[bold cyan]处理: {image_path.name}[/bold cyan]")
+                console.print(f"  主题: {receipt.title}")
+                console.print(f"  日期: {receipt.delivery_date}")
+                console.print(f"  商品数: {receipt.item_count}")
+                console.print(f"  总金额: ¥{receipt.total_amount:.2f}")
+                console.print(f"  置信度: {confidence:.2%}")
+                console.print(f"  状态: {status}")
+
+                # 交互模式确认
+                if interactive:
+                    if confidence < 0.8 and status != "待补全":
+                        console.print("[yellow]  ⚠️  识别置信度较低，建议核对[/yellow]")
+
+                    if not click.confirm("  确认保存？"):
+                        console.print("[yellow]  已跳过[/yellow]")
+                        progress.advance(task)
+                        continue
+
+                # 保存到Excel（批处理模式下跳过严格验证）
+                handler = ExcelHandler(excel_file)
+                handler.add_receipt(receipt)
+                handler.close()
+
+                console.print(f"[green]✓ {image_path.name}: 已保存[/green]")
+                success_count += 1
+
+            except Exception as e:
+                console.print(f"[red]✗ {image_path.name}: {str(e)}[/red]")
+                if continue_on_error:
+                    failed_count += 1
+                    failed_files.append(image_path.name)
+                    progress.advance(task)
+                    continue
+                else:
+                    sys.exit(1)
+
+            progress.advance(task)
+
+    # 显示汇总
+    console.print("\n" + "=" * 50)
+    console.print("[bold cyan]批量处理完成[/bold cyan]")
+    console.print(f"  已保存: [green]{success_count}[/green]")
+    if needs_review_count > 0:
+        console.print(f"  需核对/补全: [yellow]{needs_review_count}[/yellow]")
+    if failed_count > 0:
+        console.print(f"  失败: [red]{failed_count}[/red]")
+
+    if failed_files:
+        console.print("\n[bold red]失败的文件:[/bold red]")
+        for name in failed_files:
+            console.print(f"  - {name}")
+
+    if needs_review_count > 0:
+        console.print("\n[yellow]提示: 请在Excel中核对/补全标记为「需核对」或「待补全」的收据[/yellow]")
+
+    console.print(f"\n[bold green]Excel文件:[/bold green] {excel_file}\n")
+
+
+def _create_placeholder_receipt(image_path: Path) -> PurchaseReceipt:
+    """
+    创建占位收据（AI识别失败时使用）
+
+    Args:
+        image_path: 图片路径
+
+    Returns:
+        占位收据
+    """
+    # 从文件名生成标题
+    title = image_path.stem  # 去掉扩展名
+    # 清理文件名中的常见前缀/后缀
+    for prefix in ["IMG_", "DSC_", "PHOTO_", "微信图片_", "Screenshot_"]:
+        if title.startswith(prefix):
+            title = title[len(prefix):]
+            break
+
+    # 如果标题为空或只是数字，使用默认标题
+    if not title or title.isdigit():
+        title = f"收据_{image_path.stem}"
+
+    # 创建收据，添加一个占位商品项
+    receipt = create_receipt(
+        title=title,
+        delivery_date=date.today(),
+        source_file=str(image_path),
+    )
+    receipt.recognition_method = "manual"
+    receipt.confidence = 0.0
+
+    # 添加占位商品项（标记为待补全）
+    receipt.add_item(
+        name="【待补全】请在Excel中填写实际商品信息",
+        quantity=Decimal("1"),
+        unit_price=Decimal("0"),
+        unit="项",
+        remark=f"原图片: {image_path.name}",
+    )
+
+    return receipt
+
+
+def _find_images(folder: Path, pattern: str, recursive: bool) -> List[Path]:
+    """
+    查找文件夹中的图片文件
+
+    Args:
+        folder: 文件夹路径
+        pattern: 文件匹配模式
+        recursive: 是否递归查找
+
+    Returns:
+        图片文件路径列表
+    """
+    images = []
+
+    if recursive:
+        # 递归查找
+        for ext in IMAGE_EXTENSIONS:
+            images.extend(folder.rglob(f"*{ext}"))
+            images.extend(folder.rglob(f"*{ext.upper()}"))
+    else:
+        # 仅当前文件夹
+        for ext in IMAGE_EXTENSIONS:
+            images.extend(folder.glob(f"*{ext}"))
+            images.extend(folder.glob(f"*{ext.upper()}"))
+
+    # 去重并排序
+    images = sorted(set(images))
+
+    # 如果有自定义模式，再过滤一次
+    if pattern and pattern != "*":
+        import fnmatch
+        filtered = []
+        for img in images:
+            if fnmatch.fnmatch(img.name, pattern):
+                filtered.append(img)
+        images = filtered
+
+    return images
 
 
 def _manual_input(image_path: str, title_hint: Optional[str], date_hint: Optional[str]) -> PurchaseReceipt:

@@ -82,6 +82,42 @@ test-list-ds:
 test-query-es:
 	$(PYTHON_VENV) $(SIMPLE_CLIENT) query-es wsnKPH4Nk query='metrics.platform: "sdc"' time_from=now-24h
 
+## Elasticsearch Direct Query (脱开 Grafana，直接查询 ES)
+es-query:
+	$(PYTHON_VENV) monitoring/scripts/es_query.py '(metrics.platform: "sdc") AND (metrics.cache_info.json)' --aggregate
+
+es-query-sdc:
+	$(PYTHON_VENV) monitoring/scripts/es_query.py 'metrics.platform: "sdc"' --time-from "now-24h" --aggregate
+
+es-query-explain:
+	$(PYTHON_VENV) monitoring/scripts/es_query.py '(metrics.platform: "sdc") AND (metrics.cache_info.json)' --explain
+
+es-query-json:
+	$(PYTHON_VENV) monitoring/scripts/es_query.py '(metrics.platform: "sdc") AND (metrics.cache_info.json)' --json
+
+## Alert Checker (基于规则的告警检查)
+alert-check:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rules-dir monitoring/alert_rules
+
+alert-check-rule:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rule monitoring/alert_rules/sdc/cache_info_json.yaml
+
+alert-show-rule:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rule monitoring/alert_rules/sdc/cache_info_json.yaml --show-rule
+
+alert-check-disk:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rule monitoring/alert_rules/sdc/disk_used_ratio.yaml
+
+## Email Notification (邮件通知)
+alert-email-test:
+	$(PYTHON_VENV) monitoring/scripts/email_notifier.py
+
+alert-check-email:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rule monitoring/alert_rules/sdc/cache_info_json.yaml --email
+
+alert-check-all-email:
+	$(PYTHON_VENV) monitoring/scripts/alert_checker.py --rules-dir monitoring/alert_rules --email
+
 ## Interactive Explorer
 explore:
 	$(PYTHON_VENV) $(SIMPLE_CLIENT) explore
@@ -139,6 +175,40 @@ monitor-run-verbose:
 monitor-create-index:
 	$(MONITORING_DIR)/scripts/elastalert2.sh create-index
 
+## ADK Agent (Google Agent Development Kit)
+agent-install:
+	$(VENV)/bin/pip install -r agent/requirements.txt
+
+agent-run:
+	cd agent && adk run .
+
+agent-run-simple:
+	cd agent && $(VENV)/bin/python grafana_agent_simple.py
+
+agent-tools:
+	@echo "Available Agent Tools:"
+	@echo "======================"
+	@echo "ES Query:"
+	@echo "  search_es_by_platform(platform, time_range)"
+	@echo "  search_es_by_device(device_id, platform, time_range)"
+	@echo "  search_es_by_metric(metric_name, platform, min_value, time_range)"
+	@echo "  search_es_custom(lucene_query, time_range, size)"
+	@echo "  get_es_summary(platform, time_range)"
+	@echo ""
+	@echo "Alert:"
+	@echo "  check_all_alerts(platform, severity)"
+	@echo "  check_alert_by_rule(rule_name)"
+	@echo "  get_alert_rules(platform)"
+	@echo "  analyze_alert_trend(device_id, platform, hours)"
+	@echo "  get_alert_suggestions(platform)"
+	@echo ""
+	@echo "Dashboard:"
+	@echo "  list_dashboards(folder, tag, search, limit)"
+	@echo "  get_dashboard_panels(dashboard_uid)"
+	@echo "  search_panels(keyword, folder)"
+	@echo "  get_panel_info(dashboard_uid, panel_id)"
+	@echo "  get_dashboard_recommendations(platform)"
+
 ## Show this help
 help:
 	@echo "Grafana MCP Server - Available Commands"
@@ -147,10 +217,12 @@ help:
 	@echo "Setup:"
 	@echo "  make install      - Install dependencies"
 	@echo "  make venv         - Create virtual environment"
+	@echo "  make agent-install- Install ADK Agent dependencies"
 	@echo ""
 	@echo "Running:"
 	@echo "  make run          - Start MCP server"
 	@echo "  make simple-client- Run all tests"
+	@echo "  make agent-run    - Run ADK Agent interactively"
 	@echo ""
 	@echo "Individual Tests:"
 	@echo "  make test-list-tools    - List available tools"
@@ -160,12 +232,34 @@ help:
 	@echo "  make test-query-data    - Query panel data (id=6)"
 	@echo "  make test-get-alerts    - Get firing alerts"
 	@echo "  make test-list-ds       - List datasources"
-	@echo "  make test-query-es      - Query Elasticsearch directly"
+	@echo "  make test-query-es      - Query ES via Grafana"
+	@echo ""
+	@echo "Elasticsearch Direct Query (脱开 Grafana):"
+	@echo "  make es-query           - Query: (platform:sdc) AND (cache_info.json)"
+	@echo "  make es-query-sdc       - Query: platform:sdc (24h)"
+	@echo "  make es-query-explain   - Show query DSL"
+	@echo "  make es-query-json      - Output raw JSON"
+	@echo ""
+	@echo "Alert Checker (基于 YAML 规则的告警):"
+	@echo "  make alert-check        - 检查所有告警规则"
+	@echo "  make alert-check-rule   - 检查 cache_info.json 规则"
+	@echo "  make alert-show-rule    - 显示规则详情"
+	@echo "  make alert-check-disk   - 检查 disk_used_ratio 规则"
+	@echo ""
+	@echo "Email Notification:"
+	@echo "  make alert-email-test   - 测试邮件配置"
+	@echo "  make alert-check-email  - 检查告警并发送邮件"
+	@echo "  make alert-check-all-email - 检查所有规则并发送邮件"
 	@echo ""
 	@echo "Interactive Explorer:"
 	@echo "  make explore            - Interactive dashboard explorer"
 	@echo "  make explore-ipc        - Explore dashboards in 'ipc' folder"
 	@echo "  make explore-all        - Explore all dashboards (limit=200)"
+	@echo ""
+	@echo "ADK Agent:"
+	@echo "  make agent-tools        - List all agent tools"
+	@echo "  make agent-run          - Run agent interactively (requires ZHIPU_API_KEY)"
+	@echo "  make agent-run-simple   - Run simple agent without LLM"
 	@echo ""
 	@echo "Monitoring (ElastAlert2):"
 	@echo "  make monitor-create-index - Create ElastAlert index"

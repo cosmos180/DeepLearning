@@ -5,6 +5,7 @@ httpx>=0.25.0
 elasticsearch>=7.0.0
 jinja2>=3.0.0
 pyyaml>=6.0
+python-dotenv>=1.0.0
 python-dateutil>=2.8.0
 pytz>=2023.0
 croniter>=2.0.0

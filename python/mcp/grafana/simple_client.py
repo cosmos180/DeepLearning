@@ -7,6 +7,7 @@ Each functionality is encapsulated in independent methods for easy testing.
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Optional, List
@@ -418,7 +419,10 @@ class GrafanaMCPClient:
 
     def __init__(self, config: Optional[dict] = None):
         """Initialize client with configuration"""
-        self.config = config or DEFAULT_CONFIG
+        self.config = config or DEFAULT_CONFIG.copy()
+        # Read api_key from environment variable if not provided
+        if not self.config.get("api_key"):
+            self.config["api_key"] = os.getenv("GRAFANA_API_KEY", "")
         self.process = None
         self.request_id = 0
 
