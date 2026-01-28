@@ -6,7 +6,7 @@ Excel处理模块
 
 from pathlib import Path
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 import shutil
 import re
@@ -381,12 +381,31 @@ class ExcelHandler:
         # 2. 读取采购方
         purchaser = ws["B2"].value or self.DEFAULT_PURCHASER
 
-        # 3. 读取交付日期（从最后一行的A列）
+        # 3. 获取最后一行
         last_row = ws.max_row
-        delivery_info = ws[f"A{last_row}"].value or ""
-        delivery_date = self._parse_delivery_date(delivery_info)
 
-        # 4. 读取商品明细
+        # 4. 读取交付日期（支持多种格式）
+        # 首先尝试从 E2 读取（日期字段）
+        delivery_date = self._parse_date_from_cell(ws["E2"].value)
+
+        # 如果 E2 无效，尝试从最后一行读取（交付日期字段）
+        if delivery_date is None:
+            # 查找包含"交付日期"的行
+            for row in range(last_row, max(1, last_row - 5), -1):
+                a_val = ws[f"A{row}"].value
+                b_val = ws[f"B{row}"].value
+                if a_val and "交付日期" in str(a_val):
+                    delivery_date = self._parse_date_from_cell(b_val)
+                    break
+                elif b_val and "交付日期" in str(b_val):
+                    delivery_date = self._parse_date_from_cell(a_val)
+                    break
+
+        # 如果仍然无效，使用今天
+        if delivery_date is None:
+            delivery_date = date.today()
+
+        # 5. 读取商品明细
         items = []
         row = 5
         while row <= last_row:
@@ -440,6 +459,62 @@ class ExcelHandler:
         """
         wb = self._load_workbook()
         return wb.sheetnames
+
+    def _parse_date_from_cell(self, cell_value) -> Optional[date]:
+        """
+        从单元格值解析日期（支持多种格式）
+
+        支持的格式：
+        - Excel 日期序列号（整数，如 45980）
+        - 字符串格式：2025-01-20
+        - 字符串格式：2025年01月20日
+        - datetime 对象
+
+        Args:
+            cell_value: 单元格值
+
+        Returns:
+            日期对象，解析失败返回 None
+        """
+        if cell_value is None:
+            return None
+
+        # Excel 日期序列号（整数 > 30000）
+        if isinstance(cell_value, (int, float)) and cell_value > 30000:
+            try:
+                excel_date = datetime(1899, 12, 30) + timedelta(days=cell_value)
+                return excel_date.date()
+            except (ValueError, OverflowError):
+                pass
+
+        # datetime 对象
+        if isinstance(cell_value, date) and not isinstance(cell_value, datetime):
+            return cell_value
+
+        if isinstance(cell_value, datetime):
+            return cell_value.date()
+
+        # 字符串格式
+        if isinstance(cell_value, str):
+            # 2025-01-20 格式
+            match = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', cell_value)
+            if match:
+                year, month, day = match.groups()
+                try:
+                    return date(int(year), int(month), int(day))
+                except ValueError:
+                    pass
+
+            # 2025年01月20日 格式
+            match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', cell_value)
+            if match:
+                year, month, day = match.groups()
+                try:
+                    return date(int(year), int(month), int(day))
+                except ValueError:
+                    pass
+
+        return None
 
     def _parse_delivery_date(self, delivery_info: str) -> date:
         """
