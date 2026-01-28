@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""
+采购收据管理智能 Agent
+使用 Google ADK 框架，支持 adk run 命令
+"""
+
+import os
+import litellm
+
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+# 配置智谱 AI (Zhipu AI) OpenAI 兼容端点
+os.environ["OPENAI_API_KEY"] = os.environ.get("ZHIPU_API_KEY", "")
+litellm.api_base = "https://open.bigmodel.cn/api/paas/v4/"
+
+# 导入所有工具
+from tools.ocr_tool import (
+    recognize_receipt,
+    batch_recognize,
+    create_manual_receipt,
+)
+
+from tools.excel_tool import (
+    save_receipt_to_excel,
+    read_receipt_from_excel,
+    list_excel_sheets,
+    update_receipt_in_excel,
+    delete_receipt_from_excel,
+    merge_excel_files,
+    sort_sheets_by_date,
+    rename_sheet,
+    rename_sheet_auto,
+)
+
+from tools.query_tool import (
+    list_receipts,
+    search_receipts_by_keyword,
+    get_receipt_by_date,
+    get_receipt_summary,
+)
+
+from tools.stats_tool import (
+    get_statistics,
+    export_statistics_json,
+    analyze_by_period,
+    get_top_items,
+    get_monthly_summary,
+)
+
+# ============================================================================
+# Root Agent - adk run 会使用这个 root_agent 变量
+# ============================================================================
+
+root_agent = LlmAgent(
+    model=LiteLlm(model="openai/glm-4.7"),
+    name='receipt_manager_agent',
+    description="""
+    采购收据管理智能助手，帮助用户管理采购收据，支持 AI 识别、Excel 操作、查询统计等功能。
+
+    主要功能：
+    1. AI 识别 - 使用 AI 自动识别收据图片
+    2. Excel 操作 - 保存、读取、更新、删除收据
+    3. 收据查询 - 按条件查询和搜索收据
+    4. 统计分析 - 获取统计信息和分析报告
+    """,
+    instruction="""
+    你是一个采购收据管理智能助手，帮助用户管理采购收据。
+
+    ## ⚠️ 重要：必须调用工具
+
+    对于用户的每个请求，你必须调用相应的工具来获取实际数据，而不是只提供说明或建议。
+
+    ## 工具选择规则
+
+    ### 收据查询（最常用）
+    用户想要查看收据时，使用以下工具：
+
+    1. **list_receipts** - 列出所有收据或按条件筛选
+       - 用户说: "列出所有收据"、"显示收据"、"查看收据"、"有什么收据"
+       - 调用: `list_receipts()`
+
+    2. **search_receipts_by_keyword** - 按关键词搜索
+       - 用户说: "搜索XX"、"查找XX"、"关于XX的收据"
+       - 调用: `search_receipts_by_keyword(keyword="关键词")`
+
+    3. **list_excel_sheets** - 列出所有 Sheet
+       - 用户说: "列出 Sheet"、"显示所有 Sheet"
+       - 调用: `list_excel_sheets()`
+
+    4. **get_receipt_by_date** - 查看指定日期的收据
+       - 用户说: "查看某日的收据"、"XX日期的收据"
+       - 调用: `get_receipt_by_date(target_date="2025-01-20")`
+
+    ### 统计分析
+    用户想要统计数据时：
+
+    1. **get_statistics** - 获取总体统计
+       - 用户说: "统计"、"汇总"、"总计"、"概况"
+       - 调用: `get_statistics()`
+
+    2. **get_monthly_summary** - 月度汇总
+       - 用户说: "月度汇总"、"每月统计"、"XX年的汇总"
+       - 调用: `get_monthly_summary(year=2025)`
+
+    3. **get_top_items** - 商品排行榜
+       - 用户说: "商品排行"、"购买最多"、"热门商品"
+       - 调用: `get_top_items()`
+
+    4. **analyze_by_period** - 按周期分析
+       - 用户说: "按月分析"、"按周分析"、"周期统计"
+       - 调用: `analyze_by_period(period="month")`
+
+    ### AI 识别
+    用户提到图片或收据照片时：
+
+    1. **recognize_receipt** - 识别单张收据
+       - 用户说: "识别这张收据"、"识别图片"
+       - 调用: `recognize_receipt(image_path="图片路径")`
+
+    2. **batch_recognize** - 批量识别
+       - 用户说: "批量识别"、"识别文件夹"
+       - 调用: `batch_recognize(folder_path="文件夹路径")`
+
+    ### Excel 操作
+    用户明确要操作 Excel 时：
+
+    1. **merge_excel_files** - 合并多个 Excel 文件
+       - 用户说: "合并Excel"、"合并文件"、"整合数据"
+       - 调用: `merge_excel_files(source_paths=["文件1.xlsx", "文件2.xlsx"])`
+
+    2. **sort_sheets_by_date** - 按 Sheet 日期排序
+       - 用户说: "按日期排序"、"按时间排序"、"从新到旧排序"
+       - 调用: `sort_sheets_by_date()` 或 `sort_sheets_by_date(order="asc")`
+
+    3. **rename_sheet_auto** - 自动重命名 Sheet 为"主题（日期）"格式
+       - 用户说: "重命名Sheet"、"修改Sheet名"、"把XX改为XX（日期）"
+       - 调用: `rename_sheet_auto(old_name="旧名称", date_str="9-1")`
+
+    4. **rename_sheet** - 自定义重命名 Sheet
+       - 用户说: "重命名为XX"、"改名为XX"
+       - 调用: `rename_sheet(old_name="旧名称", new_name="新名称")`
+
+    5. **read_receipt_from_excel** - 读取指定收据
+       - 调用: `read_receipt_from_excel(sheet_name="Sheet名称")`
+
+    6. **delete_receipt_from_excel** - 删除收据
+       - 调用: `delete_receipt_from_excel(sheet_name="Sheet名称")`
+
+    ## 默认 Excel 文件
+
+    默认 Excel 文件路径: ~/Documents/receipt-309/309-采购明细.xlsx
+    （完整路径: /home/bughero/Documents/receipt-309/309-采购明细.xlsx）
+
+    ## 回复风格
+
+    - 使用清晰的中文回复
+    - 重要信息使用表情符号突出显示
+    - 必须调用工具获取实际数据
+    - 金额显示时使用人民币符号 ¥
+    """,
+    tools=[
+        # OCR 工具
+        recognize_receipt,
+        batch_recognize,
+        create_manual_receipt,
+        # Excel 工具
+        save_receipt_to_excel,
+        read_receipt_from_excel,
+        list_excel_sheets,
+        update_receipt_in_excel,
+        delete_receipt_from_excel,
+        merge_excel_files,
+        sort_sheets_by_date,
+        rename_sheet,
+        rename_sheet_auto,
+        # 查询工具
+        list_receipts,
+        search_receipts_by_keyword,
+        get_receipt_by_date,
+        get_receipt_summary,
+        # 统计工具
+        get_statistics,
+        export_statistics_json,
+        analyze_by_period,
+        get_top_items,
+        get_monthly_summary,
+    ],
+)
+
+# ============================================================================
+# 导出 root_agent 供 adk run 使用
+# ============================================================================
+
+__all__ = ['root_agent']

@@ -1,0 +1,37 @@
+# SDC 磁盘使用率告警规则
+# 当设备 disk_used_ratio 超过阈值时触发告警
+
+name: "SDC Disk Used Ratio Alert"
+description: "Alert when disk usage ratio exceeds threshold"
+
+# Elasticsearch 索引
+index: "tupu-metrics-production-tp_ipc-*"
+
+# 查询条件 (Lucene 语法)
+query: 'metrics.platform: "sdc"'
+
+# 告警字段和阈值
+alert:
+  field: "metrics.cache_info.disk_used_ratio"
+  threshold_type: "greater_than"
+  threshold: 0.8
+  aggregation: "terms"
+  aggregation_field: "deviceId"
+
+# 时间窗口
+time_window:
+  range: "now-5m"
+  schedule: "*/5 * * * *"
+
+# 告警级别
+severity: "critical"
+
+# 通知配置
+notification:
+  type: "console"
+  template: |
+    Alert: {name}
+    Device: {device_id}
+    Disk Usage: {value:.2%}
+    Threshold: {threshold:.2%}
+    Time: {timestamp}

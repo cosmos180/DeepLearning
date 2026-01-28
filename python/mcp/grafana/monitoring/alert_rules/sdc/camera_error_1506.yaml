@@ -1,0 +1,45 @@
+# SDC 摄像头错误码 -1506 告警规则
+# 当设备出现摄像头错误码 -1506 时触发告警
+
+name: "SDC Camera Error -1506"
+description: "Alert when camera error code -1506 is detected"
+
+# Elasticsearch 索引
+index: "tupu-metrics-production-tp_ipc-*"
+
+# 查询条件 (Lucene 语法)
+query: '(metrics.platform: "sdc") AND (metrics.payload.camera_error_info.code: "-1506")'
+
+# 告警字段和阈值
+alert:
+  # 使用 _count 作为检查字段（文档计数）
+  field: "_count"
+  # 阈值类型: greater_than (出现任何次数即告警)
+  threshold_type: "greater_than"
+  # 阈值: 0 表示只要出现就告警
+  threshold: 0
+  # 聚合类型: 按设备聚合统计
+  aggregation: "terms"
+  aggregation_field: "deviceId"
+
+# 时间窗口
+time_window:
+  # 查询时间范围: 过去 1 天
+  range: "now-1d"
+  # 调度频率 (cron 格式): 每天早上 9 点执行
+  schedule: "0 9 * * *"
+
+# 告警级别
+severity: "warning"
+
+# 通知配置
+notification:
+  # 通知类型: email
+  type: "email"
+  # 告警消息模板
+  template: |
+    Camera Error Detected: {name}
+    Device ID: {device_id}
+    Error Code: -1506
+    Occurrence Count: {value}
+    Time: {timestamp}

@@ -1,0 +1,45 @@
+# SDC Cache Info JSON 告警规则
+# 当设备 cache_info.json 超过阈值时触发告警
+
+name: "SDC Cache Info JSON Alert"
+description: "Alert when cache_info.json count exceeds threshold"
+
+# Elasticsearch 索引
+index: "tupu-metrics-production-tp_ipc-*"
+
+# 查询条件 (Lucene 语法)
+query: 'metrics.platform: "sdc"'
+
+# 告警字段和阈值
+alert:
+  # 检查的字段路径
+  field: "metrics.cache_info.json"
+  # 阈值类型: greater_than, less_than, equal
+  threshold_type: "greater_than"
+  # 阈值
+  threshold: 10
+  # 聚合类型: 按设备聚合统计
+  aggregation: "terms"
+  aggregation_field: "deviceId"
+
+# 时间窗口
+time_window:
+  # 查询时间范围
+  range: "now-5m"
+  # 调度频率 (cron 格式)
+  schedule: "*/5 * * * *"  # 每 5 分钟
+
+# 告警级别
+severity: "warning"
+
+# 通知配置
+notification:
+  # 通知类型: console, email, webhook
+  type: "console"
+  # 告警消息模板
+  template: |
+    Alert: {name}
+    Device: {device_id}
+    Value: {value}
+    Threshold: {threshold}
+    Time: {timestamp}

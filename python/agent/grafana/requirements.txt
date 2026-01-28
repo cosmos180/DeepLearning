@@ -1,0 +1,8 @@
+# Google ADK Agent Requirements
+google-adk>=0.1.0
+litellm>=1.40.0
+nest-asyncio>=1.6.0
+
+# Existing dependencies (from parent project)
+httpx>=0.27.0
+pyyaml>=6.0.1
