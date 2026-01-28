@@ -73,6 +73,7 @@ Running agent grafana_monitoring_agent, type exit to exit.
 | `get_alert_rules` | 获取规则列表 | "显示所有告警规则" |
 | `analyze_alert_trend` | 分析告警趋势 | "设备 ABC123 的告警趋势" |
 | `get_alert_suggestions` | 获取优化建议 | "告警优化建议" |
+| `get_camera_config` | 获取摄像头配置 (Tupu BI) | "获取设备 a8:3f:a1:30:16:fb 的配置" |
 
 ### Dashboard 工具
 
@@ -109,6 +110,41 @@ Running agent grafana_monitoring_agent, type exit to exit.
 "搜索包含 crash 的面板"
 "面板 5 的详细信息"
 ```
+
+## Tupu BI 集成
+
+Agent 集成了 Tupu BI MCP 服务，可以获取告警设备的摄像头配置信息。
+
+### 功能
+
+- **自动补充设备信息**：在检查告警时自动获取摄像头配置
+- **独立查询工具**：直接查询指定设备的配置信息
+- **多种设备标识符**：支持 MAC 地址和序列号
+
+### 使用方式
+
+#### 方式 1: 自动补充（推荐）
+
+在查询告警时设置 `enrich_with_camera_config=True`：
+
+```
+"检查 sdc 平台的告警，并显示设备配置信息"
+```
+
+#### 方式 2: 独立查询
+
+直接查询指定设备的配置：
+
+```
+"获取设备 a8:3f:a1:30:16:fb 的摄像头配置"
+"查询序列号 6AB2F0C3E97DD45610FE4C45EA1E71B1 的配置"
+```
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `TUPI_BI_API_BASE` | Tupu BI API 地址 | `https://api.bi.tuputech.com` |
 
 ## 配置
 

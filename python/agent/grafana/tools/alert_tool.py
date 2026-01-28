@@ -2,14 +2,17 @@
 """
 Alert Checker Agent Tool
 智能告警检查和分析的 Agent Tool
+
+集成 Tupu BI MCP - 获取告警设备的基本配置信息
 """
 
 import asyncio
+import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
 import nest_asyncio
@@ -22,11 +25,23 @@ nest_asyncio.apply()
 script_dir = Path(__file__).parent.parent.parent / "monitoring" / "scripts"
 sys.path.insert(0, str(script_dir))
 
+# 添加 tupu_bi 模块路径
+tupu_bi_path = Path(__file__).parent.parent.parent.parent / "mcp" / "tupu" / "bi"
+if tupu_bi_path.exists():
+    sys.path.insert(0, str(tupu_bi_path))
+
 try:
     from email_notifier import EmailNotifier, EmailConfig
 except ImportError:
     EmailNotifier = None
     EmailConfig = None
+
+try:
+    from tupu_bi.client import TupuBiClient
+    TUPI_BI_AVAILABLE = True
+except ImportError:
+    TupuBiClient = None
+    TUPI_BI_AVAILABLE = False
 
 
 # ============================================================================
@@ -39,6 +54,9 @@ ES_URL = f"http://{ES_HOST}:{ES_PORT}"
 
 # 规则目录
 RULES_DIR = Path(__file__).parent.parent.parent / "monitoring" / "alert_rules"
+
+# Tupu BI API 配置
+TUPI_BI_API_BASE = os.getenv("TUPI_BI_API_BASE", "https://api.bi.tuputech.com")
 
 
 def _run_async(coro):
@@ -65,6 +83,7 @@ class AlertResult:
     severity: str
     timestamp: str
     message: str
+    camera_config: Dict[str, Any] = field(default_factory=dict)
 
 
 # ============================================================================
@@ -74,6 +93,7 @@ class AlertResult:
 def check_all_alerts(
     platform: str = None,
     severity: str = None,
+    enrich_with_camera_config: bool = False,
 ) -> str:
     """
     检查所有告警规则
@@ -81,6 +101,7 @@ def check_all_alerts(
     Args:
         platform: 可选的平台过滤 (如 'sdc')
         severity: 可选的严重级别过滤 ('critical', 'warning', 'info')
+        enrich_with_camera_config: 是否补充摄像头配置信息 (需要 Tupu BI API)
 
     Returns:
         告警检查结果摘要
@@ -103,17 +124,23 @@ def check_all_alerts(
         except Exception:
             continue
 
+    # 补充摄像头配置信息
+    if enrich_with_camera_config and alerts and TUPI_BI_AVAILABLE:
+        _enrich_alerts_with_camera_config(alerts)
+
     return _format_alerts_summary(alerts)
 
 
 def check_alert_by_rule(
     rule_name: str,
+    enrich_with_camera_config: bool = False,
 ) -> str:
     """
     检查指定的告警规则
 
     Args:
         rule_name: 规则名称 (如 'cache_info_json', 'disk_used_ratio')
+        enrich_with_camera_config: 是否补充摄像头配置信息 (需要 Tupu BI API)
 
     Returns:
         该规则的告警检查结果
@@ -131,6 +158,11 @@ def check_alert_by_rule(
     try:
         rule = _load_rule(rule_file)
         alerts = _check_single_rule(rule)
+
+        # 补充摄像头配置信息
+        if enrich_with_camera_config and alerts and TUPI_BI_AVAILABLE:
+            _enrich_alerts_with_camera_config(alerts)
+
         return _format_alerts_summary(alerts, show_details=True)
     except Exception as e:
         return f"❌ 检查规则失败: {str(e)}"
@@ -297,6 +329,50 @@ def get_alert_suggestions(
     return "\n".join(suggestions)
 
 
+def get_camera_config(
+    device_id: str,
+) -> str:
+    """
+    获取摄像头基本参数配置（独立工具）
+
+    Args:
+        device_id: 设备标识符，支持 MAC 地址（如 a8:3f:a1:30:16:fb）或序列号（如 6AB2F0C3E97DD45610FE4C45EA1E71B1）
+
+    Returns:
+        摄像头配置信息
+    """
+    if not TUPI_BI_AVAILABLE:
+        return "❌ Tupu BI 客户端不可用，请确保 tupu_bi 模块已正确安装"
+
+    try:
+        client = TupuBiClient(base_url=TUPI_BI_API_BASE)
+        result = _run_async(client.get_camera_config(device_id))
+
+        lines = [
+            f"📹 摄像头配置信息",
+            f"{'='*60}",
+            f"  设备 ID: {device_id}",
+            f"{'='*60}",
+        ]
+
+        # 格式化返回的配置信息
+        if isinstance(result, dict):
+            for key, value in result.items():
+                if isinstance(value, dict):
+                    lines.append(f"\n🔹 {key}:")
+                    for k, v in value.items():
+                        lines.append(f"    {k}: {v}")
+                else:
+                    lines.append(f"  {key}: {value}")
+        else:
+            lines.append(f"\n{result}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"❌ 获取摄像头配置失败: {str(e)}"
+
+
 # ============================================================================
 # 内部辅助函数
 # ============================================================================
@@ -305,6 +381,49 @@ def _load_rule(yaml_file: Path) -> Dict[str, Any]:
     """加载 YAML 规则"""
     with open(yaml_file, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def _enrich_alerts_with_camera_config(alerts: List[AlertResult]) -> None:
+    """
+    使用 Tupu BI API 补充告警的摄像头配置信息
+
+    Args:
+        alerts: 告警结果列表（会原地修改）
+    """
+    if not TUPI_BI_AVAILABLE:
+        return
+
+    client = TupuBiClient(base_url=TUPI_BI_API_BASE)
+
+    # 收集所有唯一的 device_id
+    unique_device_ids = list(set(alert.device_id for alert in alerts))
+
+    # 批量获取摄像头配置（使用异步提高性能）
+    async def _fetch_all_configs():
+        tasks = [client.get_camera_config(device_id) for device_id in unique_device_ids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return dict(zip(unique_device_ids, results))
+
+    try:
+        configs = _run_async(_fetch_all_configs())
+
+        # 将配置信息添加到告警结果中
+        for alert in alerts:
+            config = configs.get(alert.device_id)
+            if isinstance(config, dict):
+                alert.camera_config = config
+            elif isinstance(config, Exception):
+                # 记录错误但继续处理
+                alert.camera_config = {"error": str(config)}
+    except Exception as e:
+        # 如果批量获取失败，尝试逐个获取
+        for alert in alerts:
+            try:
+                config = _run_async(client.get_camera_config(alert.device_id))
+                if isinstance(config, dict):
+                    alert.camera_config = config
+            except Exception:
+                alert.camera_config = {}
 
 
 async def _build_aggregation_query(rule: Dict[str, Any]) -> Dict[str, Any]:
@@ -407,6 +526,9 @@ def _format_alerts_summary(alerts: List[AlertResult], show_details: bool = False
     if not alerts:
         return "✅ 未触发告警"
 
+    # 检查是否有摄像头配置信息
+    has_camera_config = any(alert.camera_config for alert in alerts)
+
     lines = [
         f"🚨 告警检查结果",
         f"{'='*60}",
@@ -425,8 +547,30 @@ def _format_alerts_summary(alerts: List[AlertResult], show_details: bool = False
             f"   时间: {alert.timestamp}"
         )
 
+        # 添加摄像头配置信息
+        if alert.camera_config:
+            error = alert.camera_config.get("error")
+            if error:
+                lines.append(f"   📹 配置: ❌ {error}")
+            else:
+                # 提取关键配置信息
+                config_lines = []
+                for key, value in alert.camera_config.items():
+                    if isinstance(value, dict):
+                        continue  # 跳过嵌套对象
+                    # 只显示重要字段
+                    if key in ["ip", "port", "mac", "sn", "model", "version", "region"]:
+                        config_lines.append(f"{key}={value}")
+
+                if config_lines:
+                    lines.append(f"   📹 配置: {', '.join(config_lines)}")
+
     if len(alerts) > 20:
         lines.append(f"\n... 还有 {len(alerts) - 20} 条告警")
+
+    # 添加配置来源说明
+    if has_camera_config:
+        lines.append(f"\n💡 摄像头配置来源: Tupu BI API ({TUPI_BI_API_BASE})")
 
     return "\n".join(lines)
 
@@ -438,4 +582,5 @@ __all__ = [
     "get_alert_rules",
     "analyze_alert_trend",
     "get_alert_suggestions",
+    "get_camera_config",  # Tupu BI MCP 集成工具
 ]

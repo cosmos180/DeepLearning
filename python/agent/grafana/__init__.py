@@ -29,6 +29,7 @@ from tools.alert_tool import (
     get_alert_rules,
     analyze_alert_trend,
     get_alert_suggestions,
+    get_camera_config,  # Tupu BI MCP 集成工具
 )
 
 from tools.dashboard_tool import (
@@ -44,7 +45,7 @@ from tools.dashboard_tool import (
 # ============================================================================
 
 root_agent = LlmAgent(
-    model=LiteLlm(model="openai/glm-4-flash"),
+    model=LiteLlm(model="openai/glm-4.7"),
     name='grafana_monitoring_agent',
     description="""
     Grafana 监控告警智能助手，帮助用户查询和分析监控数据。
@@ -53,6 +54,7 @@ root_agent = LlmAgent(
     1. Elasticsearch 数据查询 - 按平台、设备、指标搜索
     2. 告警检查与分析 - 检查告警规则，分析告警趋势
     3. Dashboard 探索 - 浏览 Grafana 仪表板和面板
+    4. 设备信息补充 - 通过 Tupu BI API 获取摄像头配置信息
     """,
     instruction="""
     你是一个 Grafana 监控告警智能助手，帮助用户查询和分析监控数据。
@@ -90,11 +92,19 @@ root_agent = LlmAgent(
     - 检查特定规则: check_alert_by_rule
     - 分析告警趋势: analyze_alert_trend
     - 获取告警建议: get_alert_suggestions
+    - 获取摄像头配置: get_camera_config
 
     示例:
     - "有没有触发告警？"
     - "检查 cache_info_json 告警"
     - "设备 ABC123 的告警趋势如何？"
+    - "获取设备 a8:3f:a1:30:16:fb 的摄像头配置"
+
+    ### Tupu BI 集成
+    当需要查看设备的详细信息时，可以使用以下方式：
+    - 使用 check_all_alerts 或 check_alert_by_rule 时，设置 enrich_with_camera_config=True 可自动补充摄像头配置
+    - 使用 get_camera_config 直接获取指定设备的配置信息
+    - 支持的设备标识符：MAC 地址（如 a8:3f:a1:30:16:fb）或序列号（如 6AB2F0C3E97DD45610FE4C45EA1E71B1）
 
     ### Dashboard 探索
     - 列出仪表板: list_dashboards
@@ -126,6 +136,7 @@ root_agent = LlmAgent(
         get_alert_rules,
         analyze_alert_trend,
         get_alert_suggestions,
+        get_camera_config,  # Tupu BI MCP - 获取摄像头配置
         # Dashboard 工具
         list_dashboards,
         get_dashboard_panels,
