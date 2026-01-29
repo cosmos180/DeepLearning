@@ -14,7 +14,7 @@ run:
 
 # 测试
 test:
-	python -m pytest tests/ -v
+	python -m pytest tests/ -v -rs
 
 # 代码检查
 lint:
