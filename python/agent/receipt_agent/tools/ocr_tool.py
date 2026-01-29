@@ -267,9 +267,119 @@ def format_receipt_result(receipt: PurchaseReceipt, confidence: float) -> str:
     return "\n".join(lines)
 
 
+def recognize_and_save(
+    image_path: str,
+    excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
+    api_key: Optional[str] = None,
+    title_hint: Optional[str] = None,
+    date_hint: Optional[str] = None,
+    image_anchor: str = "H2",
+    image_width: Optional[float] = None,
+    image_height: Optional[float] = None,
+) -> str:
+    """
+    识别收据并保存到 Excel（包含原始收据图片）
+
+    这是一个便捷函数，将 AI 识别和 Excel 保存合并为一步操作。
+
+    Args:
+        image_path: 收据图片文件路径
+        excel_path: Excel 文件路径
+        api_key: API 密钥（默认从环境变量 ARK_API_KEY 读取）
+        title_hint: 主题提示（可选）
+        date_hint: 日期提示（可选，格式：YYYY-M-D）
+        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
+        image_width: 图片宽度（像素，默认自适应）
+        image_height: 图片高度（像素，默认自适应）
+
+    Returns:
+        操作结果的格式化字符串
+
+    Example:
+        recognize_and_save(image_path="./receipt.jpg")
+        recognize_and_save(
+            image_path="./receipt.jpg",
+            image_width=200,
+            image_height=300
+        )
+    """
+    try:
+        # 步骤1: AI 识别收据
+        recognizer = AIRecognizer(api_key=api_key or os.getenv("ARK_API_KEY"))
+        receipt, confidence = _run_async(
+            recognizer.recognize_receipt_async(image_path, title_hint, date_hint)
+        )
+
+        if receipt is None:
+            return "❌ AI 识别失败，请检查图片质量或尝试手动输入"
+
+        # 步骤2: 准备收据数据
+        receipt_data = {
+            "title": receipt.title,
+            "delivery_date": receipt.delivery_date.isoformat(),
+            "purchaser": receipt.purchaser,
+            "payment_method": receipt.payment_method,
+            "items": [
+                {
+                    "sequence": item.sequence,
+                    "name": item.name,
+                    "spec": item.spec,
+                    "unit": item.unit,
+                    "quantity": float(item.quantity),
+                    "unit_price": float(item.unit_price),
+                    "remark": item.remark,
+                }
+                for item in receipt.items
+            ],
+        }
+
+        # 步骤3: 导入 excel_tool 模块
+        import sys
+        from pathlib import Path
+
+        # 找到 excel_tool 的路径
+        tools_dir = Path(__file__).parent
+        excel_tool_path = tools_dir / "excel_tool.py"
+
+        # 动态加载 excel_tool
+        import types
+        excel_tool = types.ModuleType("excel_tool")
+        excel_tool.__file__ = str(excel_tool_path)
+        with open(excel_tool_path, 'r') as f:
+            exec(f.read(), excel_tool.__dict__)
+
+        # 步骤4: 保存到 Excel（包含图片）
+        result = excel_tool.save_receipt_to_excel(
+            receipt_data=receipt_data,
+            excel_path=excel_path,
+            image_path=image_path,
+            image_anchor=image_anchor,
+            image_width=image_width,
+            image_height=image_height,
+        )
+
+        # 组合结果
+        lines = [
+            "📄 收据识别并保存完成",
+            "=" * 60,
+            f"  识别方式: AI",
+            f"  置信度: {confidence:.2%}",
+            "-" * 60,
+            result,
+        ]
+
+        return "\n".join(lines)
+
+    except ValueError as e:
+        return f"❌ 配置错误: {str(e)}"
+    except Exception as e:
+        return f"❌ 操作失败: {str(e)}"
+
+
 # 导出所有工具函数
 __all__ = [
     "recognize_receipt",
     "batch_recognize",
     "create_manual_receipt",
+    "recognize_and_save",
 ]

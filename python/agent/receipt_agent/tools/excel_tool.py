@@ -13,6 +13,39 @@ from decimal import Decimal
 
 from receipt_manager.excel_handler import ExcelHandler
 from receipt_manager import PurchaseReceipt
+from copy import copy
+import zipfile
+import xml.etree.ElementTree as ET
+
+
+def _get_sheet_order_from_xml(excel_file: Path) -> list:
+    """
+    直接从 Excel 文件的 XML 中读取 Sheet 的实际顺序
+    这比 openpyxl.sheetnames 更可靠，因为它返回的是文件中存储的实际顺序
+    """
+    try:
+        with zipfile.ZipFile(excel_file, 'r') as zip_ref:
+            # 读取 workbook.xml
+            workbook_xml = zip_ref.read('xl/workbook.xml')
+            root = ET.fromstring(workbook_xml)
+
+            # 命名空间
+            ns = {'main': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+            # 获取所有 sheet 元素
+            sheets = root.findall('.//main:sheet', ns)
+
+            # 提取 sheet 名称（按文件中存储的顺序）
+            sheet_names = []
+            for sheet in sheets:
+                name = sheet.get('name')
+                if name:
+                    sheet_names.append(name)
+
+            return sheet_names
+    except Exception as e:
+        # 如果 XML 解析失败，回退到 openpyxl
+        return None
 
 
 def _normalize_path(path: str) -> Path:
@@ -55,6 +88,10 @@ def _normalize_path(path: str) -> Path:
 def save_receipt_to_excel(
     receipt_data: dict,
     excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
+    image_path: Optional[str] = None,
+    image_anchor: str = "H2",
+    image_width: Optional[float] = None,
+    image_height: Optional[float] = None,
 ) -> str:
     """
     保存收据到 Excel 文件
@@ -62,6 +99,10 @@ def save_receipt_to_excel(
     Args:
         receipt_data: 收据数据字典，包含 title, delivery_date, purchaser, payment_method, items
         excel_path: Excel 文件路径
+        image_path: 收据图片路径（可选），支持 .jpg, .png, .bmp, .gif 等格式
+        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
+        image_width: 图片宽度（像素，默认自适应）
+        image_height: 图片高度（像素，默认自适应）
 
     Returns:
         操作结果的格式化字符串
@@ -75,7 +116,7 @@ def save_receipt_to_excel(
             "items": [
                 {"sequence": 1, "name": "语文资料", "quantity": 47, "unit_price": 6.0, "unit": "份"}
             ]
-        })
+        }, image_path="./receipt.jpg")
     """
     try:
         # 解析日期
@@ -117,12 +158,53 @@ def save_receipt_to_excel(
         handler.add_receipt(receipt)
         handler.close()
 
+        # 插入收据图片（如果提供）
+        image_info = ""
+        if image_path:
+            try:
+                from openpyxl import load_workbook
+                from openpyxl.drawing.image import Image as OpenpyxlImage
+
+                img_file = _normalize_path(image_path)
+                if not img_file.exists():
+                    image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
+                else:
+                    wb = load_workbook(excel_file)
+                    ws = wb[receipt.sheet_name]
+
+                    # 加载图片
+                    img = OpenpyxlImage(str(img_file))
+
+                    # 设置图片尺寸（如果指定）
+                    if image_width:
+                        img.width = int(image_width)
+                    if image_height:
+                        img.height = int(image_height)
+
+                    # 添加图片到指定位置
+                    ws.add_image(img, image_anchor)
+
+                    # 保存文件
+                    wb.save(excel_file)
+                    wb.close()
+
+                    image_info = (
+                        f"\n  📷 图片已插入\n"
+                        f"    位置: {image_anchor}\n"
+                        f"    文件: {img_file.name}"
+                    )
+            except ImportError:
+                image_info = f"\n  ⚠ 缺少 Pillow 库，无法插入图片（pip install Pillow）"
+            except Exception as img_e:
+                image_info = f"\n  ⚠ 图片插入失败: {str(img_e)}"
+
         return (
             f"✓ 收据已保存到 Excel\n"
             f"  文件: {excel_file}\n"
             f"  Sheet: {receipt.sheet_name}\n"
             f"  主题: {receipt.title}\n"
             f"  金额: ¥{receipt.total_amount:.2f}"
+            f"{image_info}"
         )
 
     except Exception as e:
@@ -210,11 +292,14 @@ def list_excel_sheets(
         excel_file = _normalize_path(excel_path)
 
         if not excel_file.exists():
-            return f"❌ Excel 文件不存在: {excel_path}"
+            return f"❌ Excel 文件不存在: {excel_file}"
 
-        handler = ExcelHandler(excel_file)
-        sheets = handler.list_sheets()
-        handler.close()
+        # 直接使用 openpyxl 读取，确保顺序正确
+        # 注意：不能使用 read_only=True，因为它会按字母顺序返回 sheets
+        from openpyxl import load_workbook
+        wb = load_workbook(excel_file)
+        sheets = wb.sheetnames
+        wb.close()
 
         if not sheets:
             return "📭 Excel 中没有 Sheet"
@@ -242,6 +327,10 @@ def update_receipt_in_excel(
     sheet_name: str,
     receipt_data: dict,
     excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
+    image_path: Optional[str] = None,
+    image_anchor: str = "H2",
+    image_width: Optional[float] = None,
+    image_height: Optional[float] = None,
 ) -> str:
     """
     更新 Excel 中的收据
@@ -250,6 +339,10 @@ def update_receipt_in_excel(
         sheet_name: Sheet 名称
         receipt_data: 新的收据数据
         excel_path: Excel 文件路径
+        image_path: 收据图片路径（可选），支持 .jpg, .png, .bmp, .gif 等格式
+        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
+        image_width: 图片宽度（像素，默认自适应）
+        image_height: 图片高度（像素，默认自适应）
 
     Returns:
         操作结果的格式化字符串
@@ -257,7 +350,8 @@ def update_receipt_in_excel(
     Example:
         update_receipt_in_excel(
             sheet_name="数学资料打印（1-20）",
-            receipt_data={"title": "新标题", ...}
+            receipt_data={"title": "新标题", ...},
+            image_path="./receipt.jpg"
         )
     """
     try:
@@ -314,11 +408,52 @@ def update_receipt_in_excel(
         handler.add_receipt(receipt)
         handler.close()
 
+        # 插入收据图片（如果提供）
+        image_info = ""
+        if image_path:
+            try:
+                from openpyxl import load_workbook
+                from openpyxl.drawing.image import Image as OpenpyxlImage
+
+                img_file = _normalize_path(image_path)
+                if not img_file.exists():
+                    image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
+                else:
+                    wb = load_workbook(excel_file)
+                    ws = wb[receipt.sheet_name]
+
+                    # 加载图片
+                    img = OpenpyxlImage(str(img_file))
+
+                    # 设置图片尺寸（如果指定）
+                    if image_width:
+                        img.width = int(image_width)
+                    if image_height:
+                        img.height = int(image_height)
+
+                    # 添加图片到指定位置
+                    ws.add_image(img, image_anchor)
+
+                    # 保存文件
+                    wb.save(excel_file)
+                    wb.close()
+
+                    image_info = (
+                        f"\n  📷 图片已插入\n"
+                        f"    位置: {image_anchor}\n"
+                        f"    文件: {img_file.name}"
+                    )
+            except ImportError:
+                image_info = f"\n  ⚠ 缺少 Pillow 库，无法插入图片（pip install Pillow）"
+            except Exception as img_e:
+                image_info = f"\n  ⚠ 图片插入失败: {str(img_e)}"
+
         return (
             f"✓ 收据已更新\n"
             f"  Sheet: {sheet_name}\n"
             f"  主题: {receipt.title}\n"
             f"  金额: ¥{receipt.total_amount:.2f}"
+            f"{image_info}"
         )
 
     except Exception as e:
@@ -348,7 +483,7 @@ def delete_receipt_from_excel(
         excel_file = _normalize_path(excel_path)
 
         if not excel_file.exists():
-            return f"❌ Excel 文件不存在: {excel_path}"
+            return f"❌ Excel 文件不存在: {excel_file}"
 
         wb = load_workbook(excel_file)
 
@@ -496,11 +631,11 @@ def merge_excel_files(
 
                                 # 复制样式
                                 if cell.has_style:
-                                    target_cell.font = cell.font.copy()
-                                    target_cell.border = cell.border.copy()
-                                    target_cell.fill = cell.fill.copy()
+                                    target_cell.font = copy(cell.font)
+                                    target_cell.border = copy(cell.border)
+                                    target_cell.fill = copy(cell.fill)
                                     target_cell.number_format = cell.number_format
-                                    target_cell.alignment = cell.alignment.copy()
+                                    target_cell.alignment = copy(cell.alignment)
 
                         # 复制行高
                         for row_idx, row_dim in source_ws.row_dimensions.items():
@@ -574,15 +709,23 @@ def sort_sheets_by_date(
         excel_file = _normalize_path(excel_path)
 
         if not excel_file.exists():
-            return f"❌ Excel 文件不存在: {excel_path}"
+            return f"❌ Excel 文件不存在: {excel_file}"
 
         wb = load_workbook(excel_file)
-        sheet_names = wb.sheetnames
+
+        # 尝试从 XML 中获取实际的 sheet 顺序（更可靠）
+        xml_sheet_order = _get_sheet_order_from_xml(excel_file)
+        if xml_sheet_order:
+            sheet_names = xml_sheet_order
+        else:
+            # 回退到 openpyxl 的方法
+            sheet_names = wb.sheetnames
 
         # 提取日期的函数
         def extract_date(sheet_name):
             # 匹配格式: "主题名称（月-日）" 或 "主题名称（年-月-日）"
-            match = re.search(r'\((\d{1,4})-(\d{1,2})-(\d{1,2})\)', sheet_name)
+            # 同时支持全角括号（）和半角括号()
+            match = re.search(r'[()（）](\d{1,4})-(\d{1,2})-(\d{1,2})[()（）]', sheet_name)
             if match:
                 year, month, day = match.groups()
                 if len(year) == 4:
@@ -596,44 +739,105 @@ def sort_sheets_by_date(
         # 排序
         sorted_names = sorted(sheet_names, key=extract_date, reverse=(order == "desc"))
 
-        # 创建新的工作簿来重新排序
-        from openpyxl import Workbook
-        new_wb = Workbook()
-        if "Sheet" in new_wb.sheetnames:
-            new_wb.remove(new_wb["Sheet"])
+        # 调试：显示排序前后的对比
+        def get_date_str(name):
+            m = re.search(r'[()（）](\d{1,4})-(\d{1,2})-(\d{1,2})[()（）]', name)
+            return m.group(0) if m else "无日期"
 
-        for sheet_name in sorted_names:
-            ws = wb[sheet_name]
-            new_ws = new_wb.create_sheet(title=sheet_name)
+        debug_info = []
+        debug_info.append(f"  原始顺序（前5个）:")
+        for name in sheet_names[:5]:
+            debug_info.append(f"    {get_date_str(name)} - {name[:30]}")
+        debug_info.append(f"  排序后顺序（前5个）:")
+        for name in sorted_names[:5]:
+            debug_info.append(f"    {get_date_str(name)} - {name[:30]}")
 
-            # 复制所有内容
-            for row in ws.iter_rows():
-                for cell in row:
-                    new_cell = new_ws.cell(row=cell.row, column=cell.column, value=cell.value)
-                    if cell.has_style:
-                        new_cell.font = cell.font.copy()
-                        new_cell.border = cell.border.copy()
-                        new_cell.fill = cell.fill.copy()
-                        new_cell.number_format = cell.number_format
-                        new_cell.alignment = cell.alignment.copy()
+        # 创建临时文件
+        import tempfile
+        temp_fd, temp_path = tempfile.mkstemp(suffix='.xlsx')
+        import os
+        os.close(temp_fd)
 
-            # 复制行高和列宽
-            for row in ws.row_dimensions:
-                new_ws.row_dimensions[row] = ws.row_dimensions[row]
-            for col in ws.column_dimensions:
-                new_ws.column_dimensions[col] = ws.column_dimensions[col]
+        try:
+            # 创建新的工作簿来重新排序
+            from openpyxl import Workbook
+            new_wb = Workbook()
+            if "Sheet" in new_wb.sheetnames:
+                new_wb.remove(new_wb["Sheet"])
 
-            # 复制图片
-            if hasattr(ws, '_images'):
-                for img in ws._images:
-                    new_ws.add_image(img)
+            for sheet_name in sorted_names:
+                ws = wb[sheet_name]
+                new_ws = new_wb.create_sheet(title=sheet_name)
 
-        # 保存
-        new_wb.save(excel_file)
-        new_wb.close()
-        wb.close()
+                # 复制所有内容
+                for row in ws.iter_rows():
+                    for cell in row:
+                        new_cell = new_ws.cell(row=cell.row, column=cell.column, value=cell.value)
+                        if cell.has_style:
+                            from copy import copy
+                            new_cell.font = copy(cell.font)
+                            new_cell.border = copy(cell.border)
+                            new_cell.fill = copy(cell.fill)
+                            new_cell.number_format = cell.number_format
+                            new_cell.alignment = copy(cell.alignment)
 
-        return f"✓ Sheet 已按日期{'从新到旧' if order == 'desc' else '从旧到新'}排序，共 {len(sheet_names)} 个 Sheet"
+                # 复制行高
+                for row_idx, row_dim in ws.row_dimensions.items():
+                    new_ws.row_dimensions[row_idx].height = row_dim.height
+
+                # 复制列宽
+                for col_idx, col_dim in ws.column_dimensions.items():
+                    new_ws.column_dimensions[col_idx].width = col_dim.width
+
+                # 复制合并单元格
+                if hasattr(ws, 'merged_cells'):
+                    for merged_range in list(ws.merged_cells.ranges):
+                        new_ws.merge_cells(str(merged_range))
+
+                # 复制图片
+                if hasattr(ws, '_images'):
+                    for img in ws._images:
+                        new_ws.add_image(img)
+
+            # 先保存到临时文件
+            new_wb.save(temp_path)
+            new_wb.close()
+            wb.close()
+
+            # 用临时文件替换原文件
+            import shutil
+            shutil.move(temp_path, str(excel_file))
+
+            # 验证排序结果
+            verify_wb = load_workbook(excel_file)
+            actual_order = verify_wb.sheetnames
+            verify_wb.close()
+
+            # 检查前5个和后5个的日期顺序
+            def get_date_str(name):
+                m = re.search(r'[()（）](\d{1,4})-(\d{1,2})-(\d{1,2})[()（）]', name)
+                return m.group(0) if m else "无日期"
+
+            preview = []
+            for name in actual_order[:5]:
+                preview.append(f"  {get_date_str(name)} - {name[:30]}")
+            if len(actual_order) > 10:
+                preview.append(f"  ... (共 {len(actual_order)} 个)")
+            for name in actual_order[-5:]:
+                preview.append(f"  {get_date_str(name)} - {name[:30]}")
+
+            return (
+                f"✓ Sheet 已按日期{'从新到旧' if order == 'desc' else '从旧到新'}排序\n"
+                f"  总计: {len(sheet_names)} 个 Sheet\n"
+                f"  验证结果:\n" + "\n".join(debug_info) + "\n"
+                f"  文件保存后顺序（前5个）:\n" + "\n".join(preview)
+            )
+
+        except Exception as save_error:
+            # 清理临时文件
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise save_error
 
     except Exception as e:
         return f"❌ 排序失败: {str(e)}"
@@ -664,7 +868,7 @@ def rename_sheet(
         excel_file = _normalize_path(excel_path)
 
         if not excel_file.exists():
-            return f"❌ Excel 文件不存在: {excel_path}"
+            return f"❌ Excel 文件不存在: {excel_file}"
 
         wb = load_workbook(excel_file)
 
@@ -712,7 +916,7 @@ def rename_sheet_auto(
         excel_file = _normalize_path(excel_path)
 
         if not excel_file.exists():
-            return f"❌ Excel 文件不存在: {excel_path}"
+            return f"❌ Excel 文件不存在: {excel_file}"
 
         wb = load_workbook(excel_file)
 
@@ -741,6 +945,65 @@ def rename_sheet_auto(
         return f"❌ 重命名失败: {str(e)}"
 
 
+def beautify_excel(
+    excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
+) -> str:
+    """
+    美化 Excel 文件 - 应用最新的专业样式到所有收据
+
+    这个函数会重新格式化 Excel 文件中的所有收据 Sheet，应用最新的美化样式：
+    - 深蓝色表头背景，白色文字
+    - 浅黄色总计行，深红色文字
+    - 浅灰色序号列背景
+    - 微软雅黑字体，更清晰易读
+    - 合适的行高和列宽
+    - 专业的边框样式
+
+    Args:
+        excel_path: Excel 文件路径
+
+    Returns:
+        操作结果的格式化字符串
+
+    Example:
+        beautify_excel()
+        beautify_excel(excel_path="~/Documents/收据.xlsx")
+    """
+    try:
+        excel_file = _normalize_path(excel_path)
+
+        if not excel_file.exists():
+            return f"❌ Excel 文件不存在: {excel_file}"
+
+        handler = ExcelHandler(excel_file)
+
+        # 列出所有 Sheet
+        sheet_names = handler.list_sheets()
+
+        if not sheet_names:
+            handler.close()
+            return "📭 Excel 中没有 Sheet"
+
+        # 美化所有 Sheet
+        count = handler.beautify_all_sheets()
+        handler.close()
+
+        return (
+            f"✓ Excel 美化完成\n"
+            f"  文件: {excel_file}\n"
+            f"  美化数量: {count} 个 Sheet\n"
+            f"  应用样式:\n"
+            f"    • 深蓝色表头背景 + 白色文字\n"
+            f"    • 浅黄色总计行 + 深红色文字\n"
+            f"    • 浅灰色序号/单位列背景\n"
+            f"    • 微软雅黑字体（更清晰）\n"
+            f"    • 专业的边框和间距"
+        )
+
+    except Exception as e:
+        return f"❌ 美化失败: {str(e)}"
+
+
 # 导出所有工具函数
 __all__ = [
     "save_receipt_to_excel",
@@ -752,4 +1015,5 @@ __all__ = [
     "sort_sheets_by_date",
     "rename_sheet",
     "rename_sheet_auto",
+    "beautify_excel",
 ]

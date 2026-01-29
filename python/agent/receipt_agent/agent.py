@@ -99,6 +99,7 @@ litellm.api_base = "https://open.bigmodel.cn/api/paas/v4/"
 recognize_receipt = ocr_tool.recognize_receipt
 batch_recognize = ocr_tool.batch_recognize
 create_manual_receipt = ocr_tool.create_manual_receipt
+recognize_and_save = ocr_tool.recognize_and_save
 
 save_receipt_to_excel = excel_tool.save_receipt_to_excel
 read_receipt_from_excel = excel_tool.read_receipt_from_excel
@@ -109,6 +110,7 @@ merge_excel_files = excel_tool.merge_excel_files
 sort_sheets_by_date = excel_tool.sort_sheets_by_date
 rename_sheet = excel_tool.rename_sheet
 rename_sheet_auto = excel_tool.rename_sheet_auto
+beautify_excel = excel_tool.beautify_excel
 
 list_receipts = query_tool.list_receipts
 search_receipts_by_keyword = query_tool.search_receipts_by_keyword
@@ -191,7 +193,11 @@ root_agent = LlmAgent(
        - 用户说: "识别这张收据"、"识别图片"
        - 调用: `recognize_receipt(image_path="图片路径")`
 
-    2. **batch_recognize** - 批量识别
+    2. **recognize_and_save** - 识别收据并保存到 Excel（包含原始图片）
+       - 用户说: "识别并保存"、"录入收据"、"保存收据图片"
+       - 调用: `recognize_and_save(image_path="图片路径")`
+
+    3. **batch_recognize** - 批量识别
        - 用户说: "批量识别"、"识别文件夹"
        - 调用: `batch_recognize(folder_path="文件夹路径")`
 
@@ -220,6 +226,10 @@ root_agent = LlmAgent(
     6. **delete_receipt_from_excel** - 删除收据
        - 调用: `delete_receipt_from_excel(sheet_name="Sheet名称")`
 
+    7. **beautify_excel** - 美化 Excel（应用专业样式）
+       - 用户说: "美化Excel"、"优化样式"、"格式化表格"
+       - 调用: `beautify_excel()`
+
     ## 默认 Excel 文件
 
     默认 Excel 文件路径: ~/Documents/receipt-309/309-采购明细.xlsx
@@ -237,6 +247,7 @@ root_agent = LlmAgent(
         recognize_receipt,
         batch_recognize,
         create_manual_receipt,
+        recognize_and_save,
         # Excel 工具
         save_receipt_to_excel,
         read_receipt_from_excel,
@@ -247,6 +258,7 @@ root_agent = LlmAgent(
         sort_sheets_by_date,
         rename_sheet,
         rename_sheet_auto,
+        beautify_excel,
         # 查询工具
         list_receipts,
         search_receipts_by_keyword,

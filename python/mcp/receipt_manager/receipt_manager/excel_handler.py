@@ -26,34 +26,163 @@ except ImportError:
 
 # 样式定义
 class Styles:
-    """Excel样式定义"""
+    """
+    Excel样式定义 - 业界最佳实践
 
-    # 细边框
+    设计原则：
+    1. 层次分明：标题 > 表头 > 总计 > 数据
+    2. 色彩和谐：使用柔和的配色方案，避免过于鲜艳
+    3. 易于阅读：合适的字体大小、行高、列宽
+    4. 专业规范：符合财务报表的行业标准
+    """
+
+    # ========== 边框样式 ==========
+    # 细边框（用于数据单元格）
     THIN_BORDER = Border(
-        left=Side(style='thin', color='000000'),
-        right=Side(style='thin', color='000000'),
-        top=Side(style='thin', color='000000'),
-        bottom=Side(style='thin', color='000000'),
+        left=Side(style='thin', color='D0D0D0'),
+        right=Side(style='thin', color='D0D0D0'),
+        top=Side(style='thin', color='D0D0D0'),
+        bottom=Side(style='thin', color='D0D0D0'),
     )
 
-    # 标题样式
-    TITLE_FONT = Font(size=16, bold=True)
-    TITLE_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+    # 表头边框（稍粗，用于表头）
+    HEADER_BORDER = Border(
+        left=Side(style='medium', color='A0A0A0'),
+        right=Side(style='medium', color='A0A0A0'),
+        top=Side(style='medium', color='A0A0A0'),
+        bottom=Side(style='medium', color='A0A0A0'),
+    )
 
-    # 表头样式
-    HEADER_FONT = Font(bold=True, size=11)
-    HEADER_ALIGNMENT = Alignment(horizontal='center', vertical='center')
-    HEADER_FILL = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')
+    # 总计边框（双线下边框）
+    TOTAL_BORDER = Border(
+        left=Side(style='thin', color='A0A0A0'),
+        right=Side(style='thin', color='A0A0A0'),
+        top=Side(style='thin', color='A0A0A0'),
+        bottom=Side(style='double', color='404040'),
+    )
 
-    # 数据行样式（居中对齐）
-    DATA_FONT = Font(size=11)
-    DATA_ALIGNMENT = Alignment(horizontal='center', vertical='center')
+    # ========== 字体样式 ==========
+    # 标题字体（更大、更醒目）
+    TITLE_FONT = Font(
+        size=18,
+        bold=True,
+        color='2C3E50',  # 深蓝灰色，更专业
+        name='微软雅黑',  # 使用微软雅黑字体
+    )
 
-    # 总计行样式
-    TOTAL_FONT = Font(bold=True, size=11)
+    # 表头字体（加粗、深色）
+    HEADER_FONT = Font(
+        size=12,
+        bold=True,
+        color='FFFFFF',  # 白色文字，配合深色背景
+        name='微软雅黑',
+    )
 
-    # 金额格式（带人民币符号）
+    # 数据行字体（常规、深灰）
+    DATA_FONT = Font(
+        size=11,
+        color='34495E',  # 深灰色，易于阅读
+        name='微软雅黑',
+    )
+
+    # 总计字体（加粗、突出）
+    TOTAL_FONT = Font(
+        size=12,
+        bold=True,
+        color='C0392B',  # 深红色，突出总计
+        name='微软雅黑',
+    )
+
+    # 标签字样（采购方、日期等标签）
+    LABEL_FONT = Font(
+        size=11,
+        bold=True,
+        color='7F8C8D',  # 中灰色
+        name='微软雅黑',
+    )
+
+    # ========== 对齐方式 ==========
+    # 标题居中
+    TITLE_ALIGNMENT = Alignment(
+        horizontal='center',
+        vertical='center',
+        wrap_text=False,
+    )
+
+    # 表头居中
+    HEADER_ALIGNMENT = Alignment(
+        horizontal='center',
+        vertical='center',
+        wrap_text=True,
+    )
+
+    # 数据左对齐（文本）
+    DATA_LEFT_ALIGNMENT = Alignment(
+        horizontal='left',
+        vertical='center',
+        indent=1,
+    )
+
+    # 数据居中（序号、单位等）
+    DATA_CENTER_ALIGNMENT = Alignment(
+        horizontal='center',
+        vertical='center',
+    )
+
+    # 数据右对齐（数值）
+    DATA_RIGHT_ALIGNMENT = Alignment(
+        horizontal='right',
+        vertical='center',
+    )
+
+    # ========== 背景色填充 ==========
+    # 表头背景（深蓝色系，专业感）
+    HEADER_FILL = PatternFill(
+        start_color='3498DB',  # 专业蓝
+        end_color='3498DB',
+        fill_type='solid',
+    )
+
+    # 总计行背景（浅黄色，突出但不刺眼）
+    TOTAL_FILL = PatternFill(
+        start_color='FFF9E6',  # 浅黄色
+        end_color='FFF9E6',
+        fill_type='solid',
+    )
+
+    # 第一列背景（序号列，浅灰色区分）
+    SEQUENCE_FILL = PatternFill(
+        start_color='F8F9FA',  # 极浅灰色
+        end_color='F8F9FA',
+        fill_type='solid',
+    )
+
+    # ========== 数字格式 ==========
+    # 金额格式（带人民币符号、千分位）
     CURRENCY_FORMAT = '¥#,##0.00'
+
+    # 数量格式（带千分位）
+    NUMBER_FORMAT = '#,##0.0'
+
+    # ========== 行高定义 ==========
+    ROW_HEIGHT_TITLE = 40       # 标题行
+    ROW_HEIGHT_INFO = 25        # 信息行
+    ROW_HEIGHT_SPACER = 12      # 分隔空行
+    ROW_HEIGHT_HEADER = 30      # 表头行
+    ROW_HEIGHT_DATA = 24        # 数据行
+    ROW_HEIGHT_TOTAL = 32       # 总计行
+
+    # ========== 列宽定义 ==========
+    COLUMN_WIDTHS = {
+        "A": 8,    # 序号
+        "B": 35,   # 商品名称
+        "C": 20,   # 规格型号
+        "D": 10,   # 单位
+        "E": 14,   # 数量
+        "F": 16,   # 单价
+        "G": 16,   # 金额
+        "H": 28,   # 备注
+    }
 
 from . import PurchaseReceipt, PurchaseItem
 
@@ -159,25 +288,26 @@ class ExcelHandler:
         创建新Sheet - 业界最佳实践布局
 
         布局设计：
-        第1行: 收据标题（居中，大字体）
-        第2行: 采购方信息（左侧标签，右侧内容）
-        第3行: 空行（分隔）
-        第4行: 表头（灰色背景，居中）
-        第5行起: 商品明细（带边框）
-        倒数第2行: 总计（加粗）
+        第1行: 收据标题（深色文字，居中，大字体）
+        第2行: 采购方信息（分列布局，标签加粗）
+        第3行: 空行（视觉分隔）
+        第4行: 表头（深蓝色背景，白色文字）
+        第5行起: 商品明细（带边框，序号列浅灰背景）
+        倒数第2行: 总计（浅黄背景，深红文字，双线下边框）
         最后1行: 交付信息（分列显示）
 
-        对齐原则：
-        - 文本内容：左对齐
-        - 数值内容：右对齐
-        - 表头：居中对齐
+        样式特点：
+        - 使用微软雅黑字体，更清晰易读
+        - 表头深蓝色背景，专业感强
+        - 总计行突出显示，便于快速查看
+        - 数值右对齐，文本左对齐，符合阅读习惯
         """
         # ========== 1. 标题区域 ==========
         ws.merge_cells("A1:H1")
         ws["A1"] = receipt.title
         ws["A1"].font = Styles.TITLE_FONT
         ws["A1"].alignment = Styles.TITLE_ALIGNMENT
-        ws.row_dimensions[1].height = 35
+        ws.row_dimensions[1].height = Styles.ROW_HEIGHT_TITLE
 
         # ========== 2. 采购方信息（分列布局）==========
         ws["A2"] = "采购方："
@@ -185,107 +315,137 @@ class ExcelHandler:
         ws["D2"] = "日期："
         ws["E2"] = receipt.delivery_date.strftime("%Y年%m月%d日")
 
-        # 设置采购方信息样式
-        for cell in [ws["A2"], ws["B2"], ws["D2"], ws["E2"]]:
-            cell.font = Styles.DATA_FONT
-            cell.alignment = Alignment(horizontal="left", vertical="center")
-        # 标签加粗
-        ws["A2"].font = Font(size=11, bold=True)
-        ws["D2"].font = Font(size=11, bold=True)
+        # 标签样式
+        ws["A2"].font = Styles.LABEL_FONT
+        ws["A2"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        ws["D2"].font = Styles.LABEL_FONT
+        ws["D2"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        # 内容样式
+        ws["B2"].font = Styles.DATA_FONT
+        ws["B2"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        ws["E2"].font = Styles.DATA_FONT
+        ws["E2"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        ws.row_dimensions[2].height = Styles.ROW_HEIGHT_INFO
 
         # ========== 3. 空行分隔 ==========
-        ws.row_dimensions[3].height = 10
+        ws.row_dimensions[3].height = Styles.ROW_HEIGHT_SPACER
 
-        # ========== 4. 表头行 ==========
-        headers = ["序号", "商品名称", "规格型号", "单位", "数量", "单价", "金额", "备注"]
-        header_range = f"A4:H4"
+        # ========== 4. 表头行（深蓝色背景）==========
+        headers = ["序号", "商品名称", "规格型号", "单位", "数量", "单价（元）", "金额（元）", "备注"]
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=4, column=col_idx, value=header)
             cell.font = Styles.HEADER_FONT
             cell.alignment = Styles.HEADER_ALIGNMENT
             cell.fill = Styles.HEADER_FILL
-            cell.border = Styles.THIN_BORDER
-        ws.row_dimensions[4].height = 25
+            cell.border = Styles.HEADER_BORDER
+
+        ws.row_dimensions[4].height = Styles.ROW_HEIGHT_HEADER
 
         # ========== 5. 商品明细 ==========
         row = 5
         for item in receipt.items:
-            # 序号 - 居中
+            # 序号 - 居中，浅灰背景
             ws[f"A{row}"] = item.sequence
-            ws[f"A{row}"].alignment = Alignment(horizontal="center", vertical="center")
+            ws[f"A{row}"].font = Styles.DATA_FONT
+            ws[f"A{row}"].alignment = Styles.DATA_CENTER_ALIGNMENT
+            ws[f"A{row}"].fill = Styles.SEQUENCE_FILL
+            ws[f"A{row}"].border = Styles.THIN_BORDER
 
             # 商品名称 - 左对齐
             ws[f"B{row}"] = item.name
-            ws[f"B{row}"].alignment = Alignment(horizontal="left", vertical="center")
+            ws[f"B{row}"].font = Styles.DATA_FONT
+            ws[f"B{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+            ws[f"B{row}"].border = Styles.THIN_BORDER
 
             # 规格型号 - 左对齐
             ws[f"C{row}"] = item.spec or ""
-            ws[f"C{row}"].alignment = Alignment(horizontal="left", vertical="center")
+            ws[f"C{row}"].font = Styles.DATA_FONT
+            ws[f"C{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+            ws[f"C{row}"].border = Styles.THIN_BORDER
 
-            # 单位 - 居中
+            # 单位 - 居中，浅灰背景
             ws[f"D{row}"] = item.unit
-            ws[f"D{row}"].alignment = Alignment(horizontal="center", vertical="center")
+            ws[f"D{row}"].font = Styles.DATA_FONT
+            ws[f"D{row}"].alignment = Styles.DATA_CENTER_ALIGNMENT
+            ws[f"D{row}"].fill = Styles.SEQUENCE_FILL
+            ws[f"D{row}"].border = Styles.THIN_BORDER
 
             # 数量 - 右对齐
             ws[f"E{row}"] = float(item.quantity)
-            ws[f"E{row}"].alignment = Alignment(horizontal="right", vertical="center")
+            ws[f"E{row}"].font = Styles.DATA_FONT
+            ws[f"E{row}"].number_format = Styles.NUMBER_FORMAT
+            ws[f"E{row}"].alignment = Styles.DATA_RIGHT_ALIGNMENT
+            ws[f"E{row}"].border = Styles.THIN_BORDER
 
             # 单价 - 右对齐，货币格式
             ws[f"F{row}"] = float(item.unit_price)
+            ws[f"F{row}"].font = Styles.DATA_FONT
             ws[f"F{row}"].number_format = Styles.CURRENCY_FORMAT
-            ws[f"F{row}"].alignment = Alignment(horizontal="right", vertical="center")
+            ws[f"F{row}"].alignment = Styles.DATA_RIGHT_ALIGNMENT
+            ws[f"F{row}"].border = Styles.THIN_BORDER
 
             # 金额 - 右对齐，公式+货币格式
             ws[f"G{row}"] = f"=E{row}*F{row}"
+            ws[f"G{row}"].font = Styles.DATA_FONT
             ws[f"G{row}"].number_format = Styles.CURRENCY_FORMAT
-            ws[f"G{row}"].alignment = Alignment(horizontal="right", vertical="center")
+            ws[f"G{row}"].alignment = Styles.DATA_RIGHT_ALIGNMENT
+            ws[f"G{row}"].border = Styles.THIN_BORDER
 
             # 备注 - 左对齐
             ws[f"H{row}"] = item.remark or ""
-            ws[f"H{row}"].alignment = Alignment(horizontal="left", vertical="center")
+            ws[f"H{row}"].font = Styles.DATA_FONT
+            ws[f"H{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+            ws[f"H{row}"].border = Styles.THIN_BORDER
 
-            # 统一设置字体和边框
-            for col in range(1, 9):
-                cell = ws.cell(row=row, column=col)
-                cell.font = Styles.DATA_FONT
-                cell.border = Styles.THIN_BORDER
-
-            ws.row_dimensions[row].height = 22
+            ws.row_dimensions[row].height = Styles.ROW_HEIGHT_DATA
             row += 1
 
-        # ========== 6. 总计行 ==========
+        # ========== 6. 总计行（浅黄背景，突出显示）==========
         ws.merge_cells(f"A{row}:F{row}")
         ws[f"A{row}"] = "总    计"
         ws[f"A{row}"].font = Styles.TOTAL_FONT
-        ws[f"A{row}"].alignment = Alignment(horizontal="center", vertical="center")
-        ws[f"A{row}"].border = Styles.THIN_BORDER
+        ws[f"A{row}"].alignment = Styles.DATA_CENTER_ALIGNMENT
+        ws[f"A{row}"].fill = Styles.TOTAL_FILL
+        ws[f"A{row}"].border = Styles.TOTAL_BORDER
 
         ws[f"G{row}"] = f"=SUM(G5:G{row-1})"
         ws[f"G{row}"].font = Styles.TOTAL_FONT
         ws[f"G{row}"].number_format = Styles.CURRENCY_FORMAT
-        ws[f"G{row}"].alignment = Alignment(horizontal="right", vertical="center")
-        ws[f"G{row}"].border = Styles.THIN_BORDER
+        ws[f"G{row}"].alignment = Styles.DATA_RIGHT_ALIGNMENT
+        ws[f"G{row}"].fill = Styles.TOTAL_FILL
+        ws[f"G{row}"].border = Styles.TOTAL_BORDER
 
-        ws[f"H{row}"].border = Styles.THIN_BORDER
-        ws.row_dimensions[row].height = 25
+        ws[f"H{row}"].fill = Styles.TOTAL_FILL
+        ws[f"H{row}"].border = Styles.TOTAL_BORDER
+
+        ws.row_dimensions[row].height = Styles.ROW_HEIGHT_TOTAL
 
         # ========== 7. 交付信息（分列）==========
         row += 1
-        ws["A" + str(row)] = "交付日期："
-        ws["B" + str(row)] = receipt.delivery_date.strftime("%Y年%m月%d日")
-        ws["D" + str(row)] = "付款方式："
-        ws["E" + str(row)] = receipt.payment_method
+        ws[f"A{row}"] = "交付日期："
+        ws[f"B{row}"] = receipt.delivery_date.strftime("%Y年%m月%d日")
+        ws[f"D{row}"] = "付款方式："
+        ws[f"E{row}"] = receipt.payment_method
 
-        # 设置样式
-        for col in ["A", "B", "D", "E"]:
-            cell = ws[f"{col}{row}"]
-            cell.font = Font(size=10)
-            cell.alignment = Alignment(horizontal="left", vertical="center")
-        # 标签加粗
-        ws[f"A{row}"].font = Font(size=10, bold=True)
-        ws[f"D{row}"].font = Font(size=10, bold=True)
+        # 标签样式
+        ws[f"A{row}"].font = Styles.LABEL_FONT
+        ws[f"A{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
 
-        ws.row_dimensions[row].height = 20
+        ws[f"D{row}"].font = Styles.LABEL_FONT
+        ws[f"D{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        # 内容样式
+        ws[f"B{row}"].font = Styles.DATA_FONT
+        ws[f"B{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        ws[f"E{row}"].font = Styles.DATA_FONT
+        ws[f"E{row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
+
+        ws.row_dimensions[row].height = Styles.ROW_HEIGHT_INFO
 
         # ========== 8. 插入原始收据图片（表格下方）==========
         image_row = row + 2  # 在交付信息后空一行
@@ -309,9 +469,9 @@ class ExcelHandler:
                     ws.add_image(img)
 
                     # 添加"原始凭证"标题
-                    ws[f"A{image_row}"] = "原始凭证"
-                    ws[f"A{image_row}"].font = Font(size=12, bold=True)
-                    ws[f"A{image_row}"].alignment = Alignment(horizontal="left")
+                    ws[f"A{image_row}"] = "原始凭证："
+                    ws[f"A{image_row}"].font = Styles.LABEL_FONT
+                    ws[f"A{image_row}"].alignment = Styles.DATA_LEFT_ALIGNMENT
 
                     # 设置图片所在行的高度
                     ws.row_dimensions[image_row].height = 20  # 标题行高度
@@ -327,17 +487,7 @@ class ExcelHandler:
                     logger.warning(f"插入图片失败: {e}")
 
         # ========== 9. 设置列宽 ==========
-        column_widths = {
-            "A": 8,    # 序号
-            "B": 35,   # 商品名称（加宽）
-            "C": 18,   # 规格型号
-            "D": 10,   # 单位
-            "E": 12,   # 数量
-            "F": 14,   # 单价
-            "G": 14,   # 金额
-            "H": 25,   # 备注
-        }
-        for col, width in column_widths.items():
+        for col, width in Styles.COLUMN_WIDTHS.items():
             ws.column_dimensions[col].width = width
 
     def _update_sheet(self, ws, receipt: PurchaseReceipt):
@@ -577,6 +727,46 @@ class ExcelHandler:
         if self._workbook:
             self._workbook.close()
             self._workbook = None
+
+    def beautify_all_sheets(self) -> int:
+        """
+        美化所有Sheet - 应用最新的样式到现有收据
+
+        这个方法会读取每个Sheet的收据数据，然后用新样式重新创建。
+        适用于批量更新已有收据的样式。
+
+        Returns:
+            美化的Sheet数量
+        """
+        # 备份
+        self._backup()
+
+        # 加载工作簿
+        wb = self._load_workbook()
+        sheet_names = wb.sheetnames[:]
+
+        beautified_count = 0
+
+        for sheet_name in sheet_names:
+            # 读取现有收据数据
+            receipt = self.read_receipt(sheet_name)
+            if receipt:
+                # 获取原始Sheet
+                ws = wb[sheet_name]
+
+                # 清空现有内容
+                max_row = ws.max_row
+                if max_row > 0:
+                    ws.delete_rows(1, max_row)
+
+                # 用新样式重新创建
+                self._create_sheet(ws, receipt)
+                beautified_count += 1
+
+        # 保存
+        self._save()
+
+        return beautified_count
 
 
 # 便捷函数
