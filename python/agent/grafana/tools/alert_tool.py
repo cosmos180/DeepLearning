@@ -57,6 +57,8 @@ RULES_DIR = Path(__file__).parent.parent.parent / "monitoring" / "alert_rules"
 
 # Tupu BI API 配置
 TUPI_BI_API_BASE = os.getenv("TUPI_BI_API_BASE", "https://api.bi.tuputech.com")
+TUPI_BI_AUTH_SECRET = os.getenv("TUPI_BI_AUTH_SECRET", "")
+TUPI_BI_TOKEN_ID = os.getenv("TUPI_BI_TOKEN_ID", "")
 
 
 def _run_async(coro):
@@ -84,6 +86,9 @@ class AlertResult:
     timestamp: str
     message: str
     camera_config: Dict[str, Any] = field(default_factory=dict)
+    customer_info: Dict[str, Any] = field(default_factory=dict)
+    store_info: Dict[str, Any] = field(default_factory=dict)
+    device_full_info: Dict[str, Any] = field(default_factory=dict)
 
 
 # ============================================================================
@@ -373,6 +378,107 @@ def get_camera_config(
         return f"❌ 获取摄像头配置失败: {str(e)}"
 
 
+def get_device_full_info(
+    device_id: str,
+    token_id: str = None,
+    secret: str = None,
+) -> str:
+    """
+    获取设备完整信息（整合接口）- 包含摄像头配置、客户信息、门店信息
+
+    此工具自动完成以下流程：
+    1. 获取摄像头配置（包含 UID 和 SID）
+    2. 获取认证 Token
+    3. 获取客户信息
+    4. 获取门店信息
+
+    Args:
+        device_id: 设备标识符，支持 MAC 地址（如 a8:3f:a1:30:16:fb）或序列号（如 6AB2F0C3E97DD45610FE4C45EA1E71B1）
+        token_id: Token ID（用于获取认证 Token，如不提供则使用环境变量 TUPI_BI_TOKEN_ID）
+        secret: 认证密钥（如不提供则使用环境变量 TUPI_BI_AUTH_SECRET）
+
+    Returns:
+        设备完整信息，包含摄像头配置、客户信息、门店信息
+
+    环境变量:
+        TUPI_BI_TOKEN_ID: 默认 Token ID
+        TUPI_BI_AUTH_SECRET: 认证密钥（推荐使用环境变量）
+    """
+    if not TUPI_BI_AVAILABLE:
+        return "❌ Tupu BI 客户端不可用，请确保 tupu_bi 模块已正确安装"
+
+    # 使用环境变量作为默认值
+    token_id = token_id or TUPI_BI_TOKEN_ID
+    secret = secret or TUPI_BI_AUTH_SECRET
+
+    if not token_id:
+        return "❌ 缺少 token_id，请通过参数传递或设置环境变量 TUPI_BI_TOKEN_ID"
+
+    if not secret:
+        return "❌ 缺少 secret，请通过参数传递或设置环境变量 TUPI_BI_AUTH_SECRET"
+
+    try:
+        client = TupuBiClient(base_url=TUPI_BI_API_BASE)
+        result = _run_async(client.get_device_full_info(device_id, token_id, secret))
+
+        lines = [
+            f"📋 设备完整信息",
+            f"{'='*60}",
+            f"  设备 ID: {device_id}",
+            f"{'='*60}",
+        ]
+
+        # 1. 摄像头配置
+        camera_config = result.get("camera_config", {})
+        if camera_config:
+            lines.append("\n📹 摄像头配置:")
+            # 提取并解析 data 字段
+            data_field = camera_config.get("data")
+            if data_field:
+                try:
+                    import json
+                    config_data = json.loads(data_field) if isinstance(data_field, str) else data_field
+                    # 显示关键字段
+                    for key in ["ip", "port", "mac", "sn", "model", "version", "region", "UID", "SID"]:
+                        if key in config_data:
+                            lines.append(f"  {key}: {config_data[key]}")
+                except (json.JSONDecodeError, TypeError):
+                    lines.append(f"  data: {str(data_field)[:100]}")
+            else:
+                lines.append(f"  {camera_config}")
+
+        # 2. 客户信息
+        customer_info = result.get("customer_info")
+        if customer_info and isinstance(customer_info, dict):
+            lines.append("\n👤 客户信息:")
+            for key, value in customer_info.items():
+                if not isinstance(value, dict):
+                    lines.append(f"  {key}: {value}")
+
+        # 3. 门店信息
+        store_info = result.get("store_info")
+        if store_info and isinstance(store_info, dict):
+            lines.append("\n🏪 门店信息:")
+            for key, value in store_info.items():
+                if not isinstance(value, dict):
+                    lines.append(f"  {key}: {value}")
+
+        # 4. Token 信息
+        token_info = result.get("token_info", {})
+        if token_info:
+            lines.append(f"\n🔑 Token: {token_info}")
+
+        # 5. 警告信息
+        warning = result.get("_warning")
+        if warning:
+            lines.append(f"\n⚠️  {warning}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"❌ 获取设备完整信息失败: {str(e)}"
+
+
 # ============================================================================
 # 内部辅助函数
 # ============================================================================
@@ -393,35 +499,50 @@ def _enrich_alerts_with_camera_config(alerts: List[AlertResult]) -> None:
     if not TUPI_BI_AVAILABLE:
         return
 
+    # 检查是否有必要的认证信息
+    if not TUPI_BI_TOKEN_ID or not TUPI_BI_AUTH_SECRET:
+        return
+
     client = TupuBiClient(base_url=TUPI_BI_API_BASE)
 
     # 收集所有唯一的 device_id
     unique_device_ids = list(set(alert.device_id for alert in alerts))
 
-    # 批量获取摄像头配置（使用异步提高性能）
-    async def _fetch_all_configs():
-        tasks = [client.get_camera_config(device_id) for device_id in unique_device_ids]
+    # 批量获取设备完整信息（使用异步提高性能）
+    async def _fetch_all_full_info():
+        tasks = [
+            client.get_device_full_info(device_id, TUPI_BI_TOKEN_ID, TUPI_BI_AUTH_SECRET)
+            for device_id in unique_device_ids
+        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return dict(zip(unique_device_ids, results))
 
     try:
-        configs = _run_async(_fetch_all_configs())
+        full_infos = _run_async(_fetch_all_full_info())
 
-        # 将配置信息添加到告警结果中
+        # 将完整信息添加到告警结果中
         for alert in alerts:
-            config = configs.get(alert.device_id)
-            if isinstance(config, dict):
-                alert.camera_config = config
-            elif isinstance(config, Exception):
+            info = full_infos.get(alert.device_id)
+            if isinstance(info, dict):
+                alert.device_full_info = info
+                alert.camera_config = info.get("camera_config", {})
+                alert.customer_info = info.get("customer_info", {})
+                alert.store_info = info.get("store_info", {})
+            elif isinstance(info, Exception):
                 # 记录错误但继续处理
-                alert.camera_config = {"error": str(config)}
+                alert.camera_config = {"error": str(info)}
     except Exception as e:
         # 如果批量获取失败，尝试逐个获取
         for alert in alerts:
             try:
-                config = _run_async(client.get_camera_config(alert.device_id))
-                if isinstance(config, dict):
-                    alert.camera_config = config
+                info = _run_async(client.get_device_full_info(
+                    alert.device_id, TUPI_BI_TOKEN_ID, TUPI_BI_AUTH_SECRET
+                ))
+                if isinstance(info, dict):
+                    alert.device_full_info = info
+                    alert.camera_config = info.get("camera_config", {})
+                    alert.customer_info = info.get("customer_info", {})
+                    alert.store_info = info.get("store_info", {})
             except Exception:
                 alert.camera_config = {}
 
@@ -526,8 +647,8 @@ def _format_alerts_summary(alerts: List[AlertResult], show_details: bool = False
     if not alerts:
         return "✅ 未触发告警"
 
-    # 检查是否有摄像头配置信息
-    has_camera_config = any(alert.camera_config for alert in alerts)
+    # 检查是否有设备完整信息
+    has_full_info = any(alert.device_full_info for alert in alerts)
 
     lines = [
         f"🚨 告警检查结果",
@@ -565,12 +686,36 @@ def _format_alerts_summary(alerts: List[AlertResult], show_details: bool = False
                 if config_lines:
                     lines.append(f"   📹 配置: {', '.join(config_lines)}")
 
+        # 添加客户信息
+        if alert.customer_info:
+            customer_lines = []
+            for key, value in alert.customer_info.items():
+                if isinstance(value, dict):
+                    continue
+                # 显示重要客户字段
+                if key in ["name", "email", "phone", "contact", "status"]:
+                    customer_lines.append(f"{key}={value}")
+            if customer_lines:
+                lines.append(f"   👤 客户: {', '.join(customer_lines)}")
+
+        # 添加门店信息
+        if alert.store_info:
+            store_lines = []
+            for key, value in alert.store_info.items():
+                if isinstance(value, dict):
+                    continue
+                # 显示重要门店字段
+                if key in ["name", "address", "location", "status"]:
+                    store_lines.append(f"{key}={value}")
+            if store_lines:
+                lines.append(f"   🏪 门店: {', '.join(store_lines)}")
+
     if len(alerts) > 20:
         lines.append(f"\n... 还有 {len(alerts) - 20} 条告警")
 
     # 添加配置来源说明
-    if has_camera_config:
-        lines.append(f"\n💡 摄像头配置来源: Tupu BI API ({TUPI_BI_API_BASE})")
+    if has_full_info:
+        lines.append(f"\n💡 设备完整信息来源: Tupu BI API ({TUPI_BI_API_BASE})")
 
     return "\n".join(lines)
 
@@ -582,5 +727,6 @@ __all__ = [
     "get_alert_rules",
     "analyze_alert_trend",
     "get_alert_suggestions",
-    "get_camera_config",  # Tupu BI MCP 集成工具
+    "get_camera_config",  # Tupu BI MCP - 获取摄像头配置
+    "get_device_full_info",  # Tupu BI MCP - 获取设备完整信息（含客户、门店）
 ]

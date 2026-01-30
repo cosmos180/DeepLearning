@@ -1,0 +1,36 @@
+# Grafana 告警邮件配置
+# 支持环境变量替换: ${VAR} 或 ${VAR:-default}
+
+smtp:
+  host: ${SMTP_HOST:-smtp.exmail.qq.com}
+  port: ${SMTP_PORT:-465}
+  use_tls: ${SMTP_USE_TLS:-true}
+
+sender:
+  email: ${SENDER_EMAIL}
+  password: ${SENDER_PASSWORD}
+  name: ${SENDER_NAME:-Grafana 监控告警}
+
+recipients:
+  to:
+    - ${RECIPIENTS_TO}
+  cc: []
+  bcc: []
+
+# 按严重级别路由收件人
+severity_routes:
+  critical:
+    to:
+      - ${RECIPIENTS_TO:-oncall@tuputech.com}
+    cc: []
+  warning:
+    to:
+      - ${RECIPIENTS_TO:-team@tuputech.com}
+    cc: []
+  info:
+    to:
+      - ${RECIPIENTS_TO}
+    cc: []
+
+templates:
+  subject_template: "[{severity}] {rule_name} - {device_id}"
