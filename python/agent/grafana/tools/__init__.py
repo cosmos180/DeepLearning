@@ -27,6 +27,11 @@ from .dashboard_tool import (
     get_dashboard_recommendations,
 )
 
+from .alert_email_reporter import (
+    send_alert_report_email,
+    AlertEmailReporter,
+)
+
 __all__ = [
     # ES 查询工具
     "search_es_by_platform",
@@ -46,4 +51,7 @@ __all__ = [
     "search_panels",
     "get_panel_info",
     "get_dashboard_recommendations",
+    # 告警邮件报告工具
+    "send_alert_report_email",
+    "AlertEmailReporter",
 ]

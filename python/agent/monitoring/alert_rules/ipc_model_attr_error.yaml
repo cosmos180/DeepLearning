@@ -1,0 +1,12 @@
+name: IPC 模型调用失败-attr
+description: 监控 Attr 模型调用失败情况
+index: tupu-metrics-production-tp_ipc-*
+query: '(metrics.platform: "$platform") AND (metrics.msg: "detect attr timeout")'
+time_window:
+  range: now-15m
+alert:
+  field: _count
+  threshold: 10
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: critical

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+        }
+        .header {
+            padding: 24px;
+            color: white;
+        }
+        .header.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        .header.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        .header.critical {
+            background: linear-gradient(135deg, #dc3545 0%, #c7254e 100%);
+        }
+        .header.info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header .meta {
+            margin: 4px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 24px;
+        }
+        .alert-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #dee2e6;
+        }
+        .summary-card.critical {
+            border-left-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        .summary-card.warning {
+            border-left-color: #ffc107;
+            background-color: #fffbf0;
+        }
+        .summary-card .label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .summary-card .value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #212529;
+        }
+        .summary-card .value.highlight {
+            font-size: 24px;
+        }
+        .summary-card .value.danger {
+            color: #dc3545;
+        }
+        .summary-card .value.warning {
+            color: #ffc107;
+        }
+        .section {
+            margin: 24px 0;
+        }
+        .section h3 {
+            font-size: 16px;
+            color: #495057;
+            margin: 0 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .severity-badge.critical {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .severity-badge.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .severity-badge.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .chart-container {
+            text-align: center;
+            margin: 16px 0;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .chart-container img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 4px;
+            font-size: 14px;
+        }
+        .link-button:hover {
+            background-color: #0056b3;
+        }
+        .link-button.secondary {
+            background-color: #6c757d;
+        }
+        .link-button.secondary:hover {
+            background-color: #545b62;
+        }
+        .footer {
+            padding: 20px 24px;
+            color: #6c757d;
+            font-size: 13px;
+            border-top: 1px solid #dee2e6;
+        }
+        .footer p {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header {{ header_class }}">
+            <h1>{{ title }}</h1>
+            <p class="meta">触发时间: {{ triggered_at }} | 平台: {{ platform }}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Summary Cards -->
+            <div class="alert-summary">
+                <div class="summary-card {{ severity_class }}">
+                    <div class="label">告警级别</div>
+                    <div class="value"><span class="severity-badge {{ severity_class }}">{{ severity }}</span></div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">规则名称</div>
+                    <div class="value">{{ rule_name }}</div>
+                </div>
+                <div class="summary-card {{ severity_class }}">
+                    <div class="label">当前值</div>
+                    <div class="value highlight {{ severity_class }}">{{ actual_value }}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">阈值</div>
+                    <div class="value">{{ threshold_value }}</div>
+                </div>
+            </div>
+
+            {% if device_id %}
+            <div class="section">
+                <h3>设备信息</h3>
+                <table class="data-table">
+                    <tr><th width="30%">设备 ID</th><td>{{ device_id }}</td></tr>
+                    {% if device_ip %}
+                    <tr><th>IP 地址</th><td>{{ device_ip }}</td></tr>
+                    {% endif %}
+                    {% if device_location %}
+                    <tr><th>位置</th><td>{{ device_location }}</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Chart -->
+            {% if grafana_chart_url %}
+            <div class="section">
+                <h3>指标趋势</h3>
+                <div class="chart-container">
+                    <img src="{{ grafana_chart_url|safe }}" alt="Metric Trend Chart" />
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Data Details -->
+            {% if metric_data %}
+            <div class="section">
+                <h3>数据明细</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>值</th>
+                            <th>阈值</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for point in metric_data[:20] %}
+                        <tr>
+                            <td>{{ point.timestamp }}</td>
+                            <td>{{ point.value }}</td>
+                            <td>{{ point.threshold }}</td>
+                            <td>{% if point.value > point.threshold %}⚠️ 超标{% else %}✅ 正常{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Related Links -->
+            <div class="section">
+                <h3>相关链接</h3>
+                <a href="{{ kibana_url }}" class="link-button">在 Kibana 中查看</a>
+                {% if grafana_dashboard_url %}
+                <a href="{{ grafana_dashboard_url }}" class="link-button secondary">在 Grafana 中查看</a>
+                {% endif %}
+                {% if runbook_url %}
+                <a href="{{ runbook_url }}" class="link-button secondary">处理手册</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>本告警由 Grafana 监控系统生成</p>
+            <p>规则: {{ rule_name }} | 触发时间: {{ triggered_at }}</p>
+        </div>
+    </div>
+</body>
+</html>

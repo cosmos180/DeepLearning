@@ -1,0 +1,12 @@
+name: IPC 摄像头离线告警
+description: 监控摄像头离线情况
+index: tupu-metrics-production-tp_ipc-*
+query: '(metrics.deviceType: "$platform") AND (metrics.name: "camera_offline")'
+time_window:
+  range: now-10m
+alert:
+  field: _count
+  threshold: 5
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: critical

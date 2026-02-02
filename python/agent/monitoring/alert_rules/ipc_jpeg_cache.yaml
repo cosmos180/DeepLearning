@@ -1,0 +1,12 @@
+name: IPC 数据积压告警-JPEG缓存
+description: 监控 JPEG 缓存数据积压情况
+index: tupu-metrics-production-tp_ipc-*
+query: '(metrics.platform: "$platform") AND (metrics.cache_info.jpeg: > 5000)'
+time_window:
+  range: now-30m
+alert:
+  field: metrics.cache_info.jpeg
+  threshold: 5000
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: warning

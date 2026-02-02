@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+        }
+        .header {
+            padding: 24px;
+            color: white;
+        }
+        .header.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        .header.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+        .header.critical {
+            background: linear-gradient(135deg, #dc3545 0%, #c7254e 100%);
+        }
+        .header.info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header .meta {
+            margin: 4px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 24px;
+        }
+        .alert-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #dee2e6;
+        }
+        .summary-card.critical {
+            border-left-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        .summary-card.warning {
+            border-left-color: #ffc107;
+            background-color: #fffbf0;
+        }
+        .summary-card .label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .summary-card .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212529;
+        }
+        .section {
+            margin: 24px 0;
+        }
+        .section h3 {
+            font-size: 16px;
+            color: #495057;
+            margin: 0 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .error-item {
+            background-color: #fff5f5;
+            border-left: 4px solid #dc3545;
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 6px;
+        }
+        .error-item .time {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+        .error-item .message {
+            font-size: 14px;
+            color: #212529;
+            margin: 4px 0;
+            word-break: break-word;
+        }
+        .error-item .detail {
+            font-size: 13px;
+            color: #495057;
+            margin: 4px 0;
+        }
+        .error-item .detail strong {
+            color: #212529;
+        }
+        .code-block {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 12px 0;
+        }
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .severity-badge.critical {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .severity-badge.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .severity-badge.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .link-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 4px;
+            font-size: 14px;
+        }
+        .link-button:hover {
+            background-color: #0056b3;
+        }
+        .link-button.secondary {
+            background-color: #6c757d;
+        }
+        .link-button.secondary:hover {
+            background-color: #545b62;
+        }
+        .footer {
+            padding: 20px 24px;
+            color: #6c757d;
+            font-size: 13px;
+            border-top: 1px solid #dee2e6;
+        }
+        .footer p {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header {{ header_class }}">
+            <h1>{{ title }}</h1>
+            <p class="meta">触发时间: {{ triggered_at }} | 环境: {{ environment }}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Alert Summary Cards -->
+            <div class="alert-summary">
+                <div class="summary-card {{ severity_class }}">
+                    <div class="label">告警级别</div>
+                    <div class="value"><span class="severity-badge {{ severity_class }}">{{ severity }}</span></div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">规则名称</div>
+                    <div class="value">{{ rule_name }}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">匹配数量</div>
+                    <div class="value">{{ num_hits }}</div>
+                </div>
+            </div>
+
+            {% if service_name %}
+            <div class="section">
+                <h3>服务信息</h3>
+                <table style="width: 100%;">
+                    <tr>
+                        <td style="padding: 8px; width: 30%; color: #6c757d;">服务名称</td>
+                        <td style="padding: 8px;"><strong>{{ service_name }}</strong></td>
+                    </tr>
+                    {% if hostname %}
+                    <tr>
+                        <td style="padding: 8px; color: #6c757d;">主机名</td>
+                        <td style="padding: 8px;">{{ hostname }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Error Details -->
+            <div class="section">
+                <h3>错误详情 (最近 {{ num_hits }} 条)</h3>
+                {% for hit in hits[:10] %}
+                <div class="error-item">
+                    <div class="time">{{ hit._source.get('@timestamp', 'N/A') }}</div>
+                    {% if hit._source.get('level') %}
+                    <div class="detail"><strong>级别:</strong> {{ hit._source.level }}</div>
+                    {% endif %}
+                    {% if hit._source.get('error_type') %}
+                    <div class="detail"><strong>错误类型:</strong> {{ hit._source.error_type }}</div>
+                    {% endif %}
+                    {% if hit._source.get('message') %}
+                    <div class="message">{{ hit._source.message }}</div>
+                    {% endif %}
+                    {% if hit._source.get('stack_trace') %}
+                    <div class="code-block"><pre>{{ hit._source.stack_trace }}</pre></div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Related Links -->
+            <div class="section">
+                <h3>相关链接</h3>
+                <a href="{{ kibana_url }}" class="link-button">在 Kibana 中查看</a>
+                {% if grafana_url %}
+                <a href="{{ grafana_url }}" class="link-button secondary">在 Grafana 中查看</a>
+                {% endif %}
+                {% if runbook_url %}
+                <a href="{{ runbook_url }}" class="link-button secondary">处理手册</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>本告警由 Grafana 监控系统生成</p>
+            <p>规则: {{ rule_name }} | 触发时间: {{ triggered_at }}</p>
+        </div>
+    </div>
+</body>
+</html>

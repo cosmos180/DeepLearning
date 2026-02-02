@@ -1,0 +1,11 @@
+name: IPC 磁盘使用率告警
+index: tupu-metrics-production-tp_ipc-*
+query: "*"
+time_window:
+  range: now-1h
+alert:
+  field: metrics.disk_used_ratio
+  threshold: 0.9
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: warning

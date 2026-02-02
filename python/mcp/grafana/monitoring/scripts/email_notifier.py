@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 from dotenv import load_dotenv
@@ -460,6 +460,120 @@ class EmailNotifier:
 </html>
 """
 
+        return self.send(subject, body, severity, html=True)
+
+    def send_status_report(
+        self,
+        title: str,
+        status_title: str,
+        status_message: str,
+        info_box_title: str,
+        info_box_content: str,
+        severity: str = "success",
+        details_content: str = None,
+        alert_list: List[Dict] = None,
+        platform: str = "SDC",
+    ) -> bool:
+        """
+        发送状态报告邮件（使用新模板）
+
+        Args:
+            title: 报告标题
+            status_title: 状态标题
+            status_message: 状态消息
+            info_box_title: 信息框标题
+            info_box_content: 信息框内容（支持 HTML）
+            severity: 严重程度
+            details_content: 详细信息（可选）
+            alert_list: 告警列表（可选），每个告警包含:
+                - rule_name: 规则名称
+                - device_id: 设备 ID
+                - value: 当前值
+                - threshold: 阈值
+                - severity: 严重程度
+                - timestamp: 时间戳
+            platform: 平台名称
+
+        Returns:
+            发送是否成功
+        """
+        import datetime
+        current_time = datetime.datetime.now()
+        subtitle = f"生成时间: {current_time.strftime('%Y-%m-%d %H:%M:%S')}"
+
+        # 尝试导入模板渲染器
+        try:
+            import sys
+            templates_dir = Path(__file__).parent.parent / "templates"
+            if str(templates_dir) not in sys.path:
+                sys.path.insert(0, str(templates_dir))
+            from email_template_renderer import render_status_report
+
+            body = render_status_report(
+                title=title,
+                subtitle=subtitle,
+                status_title=status_title,
+                status_message=status_message,
+                info_box_title=info_box_title,
+                info_box_content=info_box_content,
+                severity=severity,
+                details_content=details_content,
+                alert_list=alert_list,
+                platform=platform,
+            )
+        except Exception as e:
+            # 模板不可用，回退到简单格式
+            print(f"⚠️ 模板渲染失败，使用简单格式: {e}")
+            icon = "✅" if severity == "success" else "🔴" if severity == "critical" else "🟡"
+
+            # 构建简单的告警表格
+            alert_div = ""
+            if alert_list:
+                alert_table_html = "<table style='width: 100%; border-collapse: collapse; margin-top: 12px;'>"
+                alert_table_html += "<tr style='background: #f8f9fa;'><th style='padding: 8px; border: 1px solid #ddd;'>规则</th><th style='padding: 8px; border: 1px solid #ddd;'>设备</th><th style='padding: 8px; border: 1px solid #ddd;'>值</th><th style='padding: 8px; border: 1px solid #ddd;'>阈值</th></tr>"
+                for alert in alert_list[:20]:
+                    alert_table_html += f"<tr><td style='padding: 8px; border: 1px solid #ddd;'>{alert.get('rule_name', 'N/A')}</td><td style='padding: 8px; border: 1px solid #ddd;'>{alert.get('device_id', 'N/A')}</td><td style='padding: 8px; border: 1px solid #ddd;'>{alert.get('value', 'N/A')}</td><td style='padding: 8px; border: 1px solid #ddd;'>{alert.get('threshold', 'N/A')}</td></tr>"
+                alert_table_html += "</table>"
+                alert_div = f'<div class="info-box"><h3>告警详情</h3>{alert_table_html}</div>'
+
+            # 详情部分
+            details_div = f'<div class="info-box">{details_content}</div>' if details_content else ''
+
+            body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; padding: 20px; }}
+        .header {{ background: #28a745; color: white; padding: 20px; border-radius: 8px; }}
+        .info-box {{ background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0; }}
+        .footer {{ color: #6c757d; font-size: 13px; margin-top: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{icon} {title}</h1>
+        <p>{subtitle}</p>
+    </div>
+    <div class="info-box">
+        <h2>{status_title}</h2>
+        <p>{status_message}</p>
+    </div>
+    <div class="info-box">
+        <h3>{info_box_title}</h3>
+        {info_box_content}
+    </div>
+    {alert_div if alert_list else ''}
+    {details_div if details_content else ''}
+    <div class="footer">
+        <p>Platform: {platform}</p>
+        <p>This is an automated message from Grafana Alert System.</p>
+    </div>
+</body>
+</html>
+"""
+
+        subject = f"[{severity.upper()}] {title}"
         return self.send(subject, body, severity, html=True)
 
 

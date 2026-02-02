@@ -1,0 +1,12 @@
+name: IPC 数据上传失败-uploadTrack
+description: 监控 uploadTrack 上传失败情况
+index: tupu-metrics-production-tp_ipc-*
+query: '(metrics.platform: "$platform") AND (metrics.msg: "uploadTrack error")'
+time_window:
+  range: now-30m
+alert:
+  field: _count
+  threshold: 20
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: warning

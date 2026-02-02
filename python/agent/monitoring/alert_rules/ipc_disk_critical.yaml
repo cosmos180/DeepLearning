@@ -1,0 +1,12 @@
+name: IPC 磁盘使用率严重告警
+description: 磁盘使用率超过 90% 严重告警
+index: tupu-metrics-production-tp_ipc-*
+query: '(metrics.platform: "$platform") AND (metrics.cache_info.disk_used_ratio: >= 0.7)'
+time_window:
+  range: now-1h
+alert:
+  field: metrics.cache_info.disk_used_ratio
+  threshold: 0.9
+  threshold_type: greater_than
+  aggregation_field: deviceId.keyword
+severity: critical
