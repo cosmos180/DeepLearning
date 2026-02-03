@@ -6,6 +6,7 @@ Alert Email Reporter Tool
 
 import asyncio
 import base64
+import io
 import json
 import os
 import smtplib
@@ -14,11 +15,20 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
+import email.utils
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
 import nest_asyncio
+from PIL import Image
+
+# 加载 .env 文件
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # 允许嵌套事件循环
 nest_asyncio.apply()
@@ -69,16 +79,29 @@ class AlertReportConfig:
 
 
 # 默认告警规则与 Panel 的映射关系
+# 包含 Dashboard 中所有 14 个 Panel
 DEFAULT_ALERT_PANELS = {
+    # 数据积压相关
     "IPC 数据积压告警-JSON缓存": {"panel_id": 5, "title": "数据积压【json】"},
     "IPC 数据积压告警-JPEG缓存": {"panel_id": 6, "title": "数据积压【jpeg】"},
+    "IPC 数据积压告警-track上传队列": {"panel_id": 8, "title": "数据积压【track上传队列】"},
+    "IPC 数据积压告警-trackDB文件": {"panel_id": 10, "title": "数据积压【track DB 文件】"},
+    "IPC 数据积压告警-imageRecordDB文件": {"panel_id": 9, "title": "数据积压【imageRecord DB 文件】"},
+    # 模型调用失败
     "IPC 模型调用失败-reid": {"panel_id": 11, "title": "模型调用失败【reid】"},
     "IPC 模型调用失败-attr": {"panel_id": 12, "title": "模型调用失败【attr】"},
+    # 数据上传失败
     "IPC 数据上传失败-uploadTrack": {"panel_id": 13, "title": "数据上传失败【uploadTrack】"},
+    # 系统异常
+    "IPC 摄像头离线告警": {"panel_id": 21, "title": "摄像头离线"},
+    "IPC 空token告警": {"panel_id": 17, "title": "空 token"},
+    "IPC deadlock告警": {"panel_id": 15, "title": "deadlock"},
+    "IPC ffmpeg拉流异常": {"panel_id": 19, "title": "ffmpeg 拉流异常"},
+    # 磁盘和性能
     "IPC 磁盘使用率警告": {"panel_id": 23, "title": "磁盘使用率"},
     "IPC 磁盘使用率告警": {"panel_id": 23, "title": "磁盘使用率"},
     "IPC 磁盘使用率严重告警": {"panel_id": 23, "title": "磁盘使用率"},
-    "IPC 摄像头离线告警": {"panel_id": 21, "title": "摄像头离线"},
+    "IPC 序列化frame encode": {"panel_id": 25, "title": "序列化 frame encode"},
 }
 
 
@@ -194,22 +217,24 @@ class RecipientsManager:
 
 class AlertEmailReporter:
     """告警邮件报告器"""
-    
+
     def __init__(
         self,
         grafana_config: Optional[GrafanaConfig] = None,
         email_config: Optional[EmailConfig] = None,
         report_config: Optional[AlertReportConfig] = None,
         alert_panels: Optional[Dict[str, Dict]] = None,
+        auto_fetch_panels: bool = True,
     ):
         """
         初始化告警邮件报告器
-        
+
         Args:
             grafana_config: Grafana 配置
             email_config: 邮件配置
             report_config: 报告配置
-            alert_panels: 告警规则与 Panel 的映射关系
+            alert_panels: 告警规则与 Panel 的映射关系（如果为 None 且 auto_fetch_panels=True，则自动获取）
+            auto_fetch_panels: 是否自动从 dashboard 获取所有 panel（默认 True）
         """
         self.grafana = grafana_config or GrafanaConfig(
             url=os.getenv("GRAFANA_URL", "https://g.dev.tuputech.com"),
@@ -246,15 +271,83 @@ class AlertEmailReporter:
             )
         
         self.report = report_config or AlertReportConfig()
-        self.alert_panels = alert_panels or DEFAULT_ALERT_PANELS
-        
+        self.auto_fetch_panels = auto_fetch_panels
+
+        # 处理 alert_panels
+        if alert_panels is not None:
+            # 使用传入的 alert_panels
+            self.alert_panels = alert_panels
+        elif auto_fetch_panels:
+            # 自动从 dashboard 获取所有 panel
+            print("正在从 Dashboard 获取所有 Panel...")
+            fetched_panels = self._fetch_dashboard_panels()
+            if fetched_panels:
+                self.alert_panels = fetched_panels
+                print(f"✅ 成功获取 {len(self.alert_panels)} 个 Panel")
+            else:
+                print("⚠️ 自动获取 Panel 失败，使用默认配置")
+                self.alert_panels = DEFAULT_ALERT_PANELS
+        else:
+            # 使用默认配置
+            self.alert_panels = DEFAULT_ALERT_PANELS
+
         # 去重 panel（多个规则可能对应同一个 panel）
         self.unique_panels = {}
         for rule_name, panel_info in self.alert_panels.items():
             panel_id = panel_info["panel_id"]
             if panel_id not in self.unique_panels:
                 self.unique_panels[panel_id] = panel_info
-    
+
+    def _fetch_dashboard_panels(self) -> Optional[Dict[str, Dict]]:
+        """
+        从 Grafana Dashboard 获取所有 Panel
+
+        Returns:
+            Panel 映射字典 {rule_name: {panel_id: int, title: str}}，失败返回 None
+        """
+        async def _query() -> dict:
+            url = f"{self.grafana.url}/api/dashboards/uid/{self.grafana.dashboard_uid}"
+            headers = {"Content-Type": "application/json"}
+            if self.grafana.api_key:
+                headers["Authorization"] = f"Bearer {self.grafana.api_key}"
+
+            async with httpx.AsyncClient(headers=headers, timeout=30.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+
+        try:
+            # 执行异步查询
+            data = asyncio.run(_query())
+            dashboard = data.get("dashboard", {})
+            panels = dashboard.get("panels", [])
+
+            if not panels:
+                return None
+
+            # 构建 alert_panels 格式：{rule_name: {panel_id: int, title: str}}
+            alert_panels = {}
+            for panel in panels:
+                panel_id = panel.get("id")
+                title = panel.get("title", "Untitled")
+
+                # 跳过没有标题的 panel（通常是 row 类型的容器）
+                if not title or panel.get("type") == "row":
+                    continue
+
+                # 使用 panel 标题作为规则名称
+                rule_name = f"IPC {title}"
+                alert_panels[rule_name] = {
+                    "panel_id": panel_id,
+                    "title": title
+                }
+
+            return alert_panels
+
+        except Exception as e:
+            print(f"⚠️ 获取 Dashboard Panel 失败: {e}")
+            return None
+
     def _format_time_range(self, time_range: str) -> str:
         """
         格式化时间范围显示
@@ -268,7 +361,58 @@ class AlertEmailReporter:
         if time_range == "today":
             return "今天 (00:00:00 ~ 现在)"
         return f"最近 {time_range}"
-    
+
+    @staticmethod
+    def _compress_image(
+        image_data: bytes,
+        max_width: int = 800,
+        max_height: int = 400,
+        quality: int = 75,
+    ) -> bytes:
+        """
+        压缩图片以减小文件大小
+
+        Args:
+            image_data: 原始图片数据 (PNG)
+            max_width: 最大宽度
+            max_height: 最大高度
+            quality: JPEG 质量 (1-100, 越小文件越小)
+
+        Returns:
+            压缩后的 JPEG 图片数据
+        """
+        try:
+            # 打开图片
+            img = Image.open(io.BytesIO(image_data))
+
+            # 计算新的尺寸（保持宽高比）
+            original_width, original_height = img.size
+            ratio = min(max_width / original_width, max_height / original_height)
+
+            if ratio < 1:
+                new_width = int(original_width * ratio)
+                new_height = int(original_height * ratio)
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # 转换为 RGB (如果是 RGBA)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            # 保存为 JPEG 格式
+            output = io.BytesIO()
+            img.save(output, format='JPEG', quality=quality, optimize=True)
+            return output.getvalue()
+
+        except Exception as e:
+            print(f"    ⚠️ 图片压缩失败: {e}，使用原始图片")
+            return image_data
+
     async def download_panel_render(
         self,
         panel_id: int,
@@ -289,8 +433,9 @@ class AlertEmailReporter:
         
         # 解析时间范围
         time_from = "now/d" if self.report.time_range == "today" else f"now-{self.report.time_range}"
-        
+
         # 生成渲染 URL
+        # 添加 scale=0.5 参数压缩图片大小
         render_url = (
             f"{self.grafana.url}/render/d-solo/{dashboard_uid}/{slug}"
             f"?panelId={panel_id}"
@@ -298,6 +443,7 @@ class AlertEmailReporter:
             f"&to=now"
             f"&width={self.report.image_width}"
             f"&height={self.report.image_height}"
+            f"&scale=0.5"  # 压缩图片为原始大小的 50%
             f"&timezone=Asia%2FShanghai"
             f"&var-platform={platform}"
         )
@@ -321,11 +467,25 @@ class AlertEmailReporter:
                     }
                 
                 response.raise_for_status()
-                
+
+                # 压缩图片以减小邮件大小
+                original_size = len(response.content)
+                compressed_data = self._compress_image(
+                    response.content,
+                    max_width=800,
+                    max_height=400,
+                    quality=70,
+                )
+                compressed_size = len(compressed_data)
+                compression_ratio = (1 - compressed_size / original_size) * 100
+
                 return {
                     "success": True,
                     "status": "success",
-                    "image_data": response.content,
+                    "image_data": compressed_data,
+                    "original_size": original_size,
+                    "compressed_size": compressed_size,
+                    "compression_ratio": compression_ratio,
                     "fallback_url": render_url
                 }
         
@@ -353,7 +513,16 @@ class AlertEmailReporter:
                     "image_base64": image_base64,
                     "render_url": result["fallback_url"]
                 }
-                print(f"    ✅ 截图下载成功 ({len(result['image_data'])} bytes)")
+
+                # 显示压缩信息
+                original_size = result.get("original_size", len(result["image_data"]))
+                compressed_size = result.get("compressed_size", len(result["image_data"]))
+                compression_ratio = result.get("compression_ratio", 0)
+
+                if compression_ratio > 0:
+                    print(f"    ✅ 截图下载成功 {original_size} → {compressed_size} bytes (压缩 {compression_ratio:.1f}%)")
+                else:
+                    print(f"    ✅ 截图下载成功 ({compressed_size} bytes)")
             else:
                 panels_data[panel_id] = {
                     "fallback_url": result["fallback_url"],
@@ -475,20 +644,24 @@ class AlertEmailReporter:
             "success": [],
             "failed": []
         }
-        
+
         for recipient in self.email.recipients:
             try:
-                msg = MIMEMultipart('alternative')
+                # 使用简单的 MIMEText 方式（base64 图片已嵌入 HTML）
+                from email.message import EmailMessage
+
+                msg = EmailMessage()
                 msg['Subject'] = subject
-                msg['From'] = formataddr([self.email.sender_name, self.email.sender_email])
+                msg['From'] = self.email.sender_email
                 msg['To'] = recipient
-                
-                msg.attach(MIMEText(html_content, 'html', 'utf-8'))
-                
+
+                # 设置 HTML 内容
+                msg.set_content(html_content, subtype='html', charset='utf-8')
+
                 with smtplib.SMTP_SSL(self.email.smtp_host, self.email.smtp_port) as server:
                     server.login(self.email.sender_email, self.email.sender_password)
                     server.send_message(msg)
-                
+
                 results["success"].append(recipient)
             except Exception as e:
                 results["failed"].append({"email": recipient, "error": str(e)})

@@ -1,294 +1,269 @@
-# Grafana ADK Agent
+# Grafana 告警邮件发送工具
 
-基于 Google Agent Development Kit 的智能监控告警 Agent。
+Grafana 监控面板批量截图和邮件发送工具，支持按 platform 变量自动分发告警报告。
 
-## 概述
+## 核心功能
 
-这个 Agent 将 Grafana 的监控查询功能转换为智能对话接口，支持：
+**唯一操作**: 批量发送 platform 告警邮件
 
-- **Elasticsearch 查询** - 自然语言查询 ES 数据
-- **告警检查** - 智能告警分析和建议
-- **Dashboard 探索** - 对话式仪表板浏览
+- ✅ **自动获取 Dashboard 面板** - 无需手动配置 panel ID
+- ✅ **按 platform 变量分发** - 为每个 platform 生成独立的告警邮件
+- ✅ **智能图片压缩** - 自动压缩图片（10-50%），减小邮件大小
+- ✅ **精美 HTML 邮件模板** - 专业的 HTML 邮件，内嵌截图
+
+---
 
 ## 快速开始
 
 ### 1. 安装依赖
 
 ```bash
-make agent-install
+make install
 ```
 
-### 2. 设置 API Key
+### 2. 配置环境变量
+
+编辑 `.env` 文件：
 
 ```bash
-export ZHIPU_API_KEY="your-zhipu-api-key"
+# Grafana 配置
+GRAFANA_URL=https://g.dev.tuputech.com
+GRAFANA_API_KEY=your-grafana-api-key
+
+# 邮件配置（腾讯企业邮）
+SENDER_EMAIL=your-email@example.com
+SENDER_PASSWORD=your-password
+SENDER_NAME=[Grafana-Alert-System]
+
+# 默认收件人
+RECIPIENTS_TO=jinxinhou@tuputech.com
 ```
 
-### 3. 运行 Agent
+### 3. 发送告警邮件
 
 ```bash
-# 方式 1: 使用 Makefile (推荐)
-make agent-run
+# 独立工具（推荐）
+python3 grafana_alert_tool.py
 
-# 方式 2: 直接使用 adk 命令
-cd agent
-adk run .
+# 或使用 Makefile
+make send
 ```
-
-### 4. 与 Agent 对话
-
-```
-Running agent grafana_monitoring_agent, type exit to exit.
-
-[user]: 查询 sdc 平台最近 24 小时的数据
-[grafana_monitoring_agent]: [显示查询结果]
-
-[user]: 有没有触发告警？
-[grafana_monitoring_agent]: [检查告警规则并返回结果]
-
-[user]: 列出 ipc 文件夹的仪表板
-[grafana_monitoring_agent]: [列出仪表板]
-
-[user]: exit
-```
-
-## 可用工具
-
-### ES 查询工具
-
-| 工具 | 说明 | 示例 |
-|------|------|------|
-| `search_es_by_platform` | 按平台搜索 | "查询 sdc 平台数据" |
-| `search_es_by_device` | 按设备搜索 | "设备 ABC123 有什么问题？" |
-| `search_es_by_metric` | 按指标搜索 | "cache 有什么异常？" |
-| `search_es_custom` | 自定义 Lucene 查询 | "搜索 metrics.platform:'sdc'" |
-| `search_es_aggregation` | **聚合统计**（获取所有唯一值） | "有哪些错误类型？" |
-| `get_es_summary` | 获取数据摘要 | "sdc 平台数据摘要" |
-
-**聚合统计工具说明：**
-
-当需要统计字段的所有唯一值时，使用 `search_es_aggregation`：
-- 返回字段的所有唯一值（不受 size 限制）
-- 自动统计每个值的数量和占比
-- 固定格式的表格输出
-
-示例：
-```
-"查询今天 metrics.msg: 'uploadTrack' 的告警中，有哪些错误类型？"
-→ search_es_aggregation(lucene_query='metrics.msg: "uploadTrack" AND metrics.msg: "reason"',
-                         agg_field='metrics.payload.code',
-                         time_range='today',
-                         agg_size=200)
-```
-
-### 告警工具
-
-| 工具 | 说明 | 示例 |
-|------|------|------|
-| `check_all_alerts` | 检查所有告警 | "有没有触发告警？" |
-| `check_alert_by_rule` | 检查特定规则 | "检查 cache_info_json 告警" |
-| `get_alert_rules` | 获取规则列表 | "显示所有告警规则" |
-| `analyze_alert_trend` | 分析告警趋势 | "设备 ABC123 的告警趋势" |
-| `get_alert_suggestions` | 获取优化建议 | "告警优化建议" |
-| `get_camera_config` | 获取摄像头配置 (Tupu BI) | "获取设备 a8:3f:a1:30:16:fb 的配置" |
-
-### Dashboard 工具
-
-| 工具 | 说明 | 示例 |
-|------|------|------|
-| `list_dashboards` | 列出仪表板 | "列出 ipc 文件夹的仪表板" |
-| `get_dashboard_panels` | 获取面板列表 | "显示 dashboard 的面板" |
-| `search_panels` | 搜索面板 | "搜索包含 crash 的面板" |
-| `get_panel_info` | 获取面板详情 | "面板 5 的详细信息" |
-| `get_panel_query_results` | **执行 panel 查询**（返回实际数据） | "查询 panel 2 的数据" |
-| `get_panel_render_url` | **获取访问链接**（无需 render 插件） | "获取 panel 13 的链接" |
-| `download_panel_render` | **下载截图/链接**（自动回退） | "下载 panel 2 的截图" |
-| `send_panel_to_email` | **发送邮件**（自动回退到链接） | "把 panel 2 发到我邮箱" |
-| `get_dashboard_recommendations` | 获取推荐 | "sdc 平台的推荐仪表板" |
 
 ---
 
-## Panel 访问功能
+## 使用方式
 
-### 🎯 智能回退机制
-
-**好消息**：`download_panel_render` 和 `send_panel_to_email` 已内置智能回退功能！
-
-| 工具 | render 可用时 | render 不可用时 |
-|------|--------------|----------------|
-| `download_panel_render` | 下载 PNG 图片到本地 | 返回直接访问链接 |
-| `send_panel_to_email` | 发送带图片的 HTML 邮件 | 发送带链接的 HTML 邮件 |
-
-### 使用方式
-
-```python
-# 这些工具会自动处理 render 插件是否可用的情况
-download_panel_render(dashboard_uid='urJcwIvHz', panel_id=13, time_range='today')
-send_panel_to_email(dashboard_uid='urJcwIvHz', panel_id=13, recipients='user@example.com')
-```
-
-**输出示例（render 不可用时）**：
-
-```
-🔗 Panel 直接访问链接
-============================================================
-  Dashboard UID: urJcwIvHz
-  Panel ID: 13
-  时间范围: today
-============================================================
-
-  📎 点击访问:
-  https://g.dev.tuputech.com/d/urJcwIvHz/ye-wu-yi-chang-jian-kong?orgId=1&viewPanel=13&from=now%2Fd&to=now
-
-  💡 提示: 此链接会直接打开 Grafana 并显示指定的 Panel
-
-⚠️ 注意: Grafana Image Renderer 插件不可用，已提供直接访问链接作为备用方案。
-```
-
-### 邮件效果对比
-
-| render 可用 | render 不可用 |
-|------------|--------------|
-| 📸 邮件中内嵌图片 | 🔗 邮件中带按钮链接 |
-| ![Panel截图](image) | [🔗 打开 Panel] |
-| 可直接查看 | 点击跳转到 Grafana |
-
-### 环境变量配置
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `GRAFANA_URL` | Grafana 服务器 URL | `https://g.dev.tuputech.com` |
-| `GRAFANA_API_KEY` | Grafana API Key（用于获取 panel 信息） | - |
-
-邮件配置参考 `monitoring/config/email.yaml`。
-
-## 自然语言示例
-
-### ES 查询
-```
-"查询 sdc 平台最近 12 小时的数据"
-"搜索设备 ABC123 的问题"
-"cache_info.json 有哪些异常？"
-"最近一天 sdc 平台 disk 使用率超过 80% 的设备"
-"查询今天 uploadTrack 告警中有哪些错误类型？"  # 使用聚合统计
-"统计 metrics.payload.code 的所有值及其数量"    # 使用聚合统计
-```
-
-### 告警检查
-```
-"有没有触发告警？"
-"检查 sdc 的 cache 告警"
-"disk 告警情况如何？"
-"设备 ABC123 的告警趋势"
-```
-
-### Dashboard 探索
-```
-"列出 ipc 文件夹的仪表板"
-"显示设备监控的面板"
-"搜索包含 crash 的面板"
-"面板 5 的详细信息"
-"查询 dashboard xxx 的 panel 2 的数据"  # 执行实际查询
-"下载 panel 2 的截图"                   # 保存到本地
-"把 panel 2 的截图发到 user@example.com" # 发送邮件
-```
-
-## Tupu BI 集成
-
-Agent 集成了 Tupu BI MCP 服务，可以获取告警设备的摄像头配置信息。
-
-### 功能
-
-- **自动补充设备信息**：在检查告警时自动获取摄像头配置
-- **独立查询工具**：直接查询指定设备的配置信息
-- **多种设备标识符**：支持 MAC 地址和序列号
-
-### 使用方式
-
-#### 方式 1: 自动补充（推荐）
-
-在查询告警时设置 `enrich_with_camera_config=True`：
-
-```
-"检查 sdc 平台的告警，并显示设备配置信息"
-```
-
-#### 方式 2: 独立查询
-
-直接查询指定设备的配置：
-
-```
-"获取设备 a8:3f:a1:30:16:fb 的摄像头配置"
-"查询序列号 6AB2F0C3E97DD45610FE4C45EA1E71B1 的配置"
-```
-
-### 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `TUPI_BI_API_BASE` | Tupu BI API 地址 | `https://api.bi.tuputech.com` |
-
-## 配置
-
-### 环境变量
-
-| 变量 | 说明 | 必需 |
-|------|------|------|
-| `ZHIPU_API_KEY` | 智谱 AI API Key | 是 |
-| `GRAFANA_URL` | Grafana 服务器 URL | 否 |
-| `GRAFANA_API_KEY` | Grafana API Key | 否 |
-
-### Elasticsearch 配置
-
-在 `agent/tools/es_query_tool.py` 中修改：
-
-```python
-ES_HOST = "172.26.2.88"
-ES_PORT = 39202
-```
-
-## 架构
-
-```
-agent/
-├── __init__.py             # Root Agent 定义 (adk run 入口)
-├── grafana_agent_simple.py # 简化版 (不需要 LLM)
-├── tools/
-│   ├── __init__.py
-│   ├── es_query_tool.py    # ES 查询工具
-│   ├── alert_tool.py       # 告警检查工具
-│   └── dashboard_tool.py   # Dashboard 探索工具
-├── requirements.txt
-└── README.md
-```
-
-## Makefile 命令
+### 方式 1: 独立工具（推荐，快速）
 
 ```bash
-make agent-install   # 安装依赖
-make agent-run       # 运行 ADK Agent (需要 ZHIPU_API_KEY)
-make agent-run-simple # 运行简化版 (不需要 LLM)
-make agent-tools     # 列出所有工具
+# 查看帮助
+python3 grafana_alert_tool.py --help
+
+# 发送所有平台（今天）
+python3 grafana_alert_tool.py
+
+# 发送指定平台
+python3 grafana_alert_tool.py --platforms sdc,tpboxv3
+
+# 自定义时间范围
+python3 grafana_alert_tool.py --time-range 24h
+
+# 指定收件人
+python3 grafana_alert_tool.py --recipients user@example.com
 ```
 
-## 模型
+### 方式 2: Makefile
 
-- **默认**: GLM-4-Flash (智谱 AI)
-- **API**: OpenAI 兼容端点 (`https://open.bigmodel.cn/api/paas/v4/`)
+```bash
+# 查看帮助
+make help
+
+# 发送所有平台
+make send
+
+# 发送今天的数据
+make send-today
+
+# 发送最近24小时的数据
+make send-24h
+
+# 发送指定平台
+make send PLATFORMS=sdc,tpboxv3
+
+# 自定义参数
+make send TIME_RANGE=7d RECIPIENTS=user@example.com
+```
+
+### 方式 3: ADK Agent（对话式）
+
+```bash
+# 启动对话式 Agent（使用 Makefile）
+make agent-run
+
+# 或直接使用 ADK 命令
+cd .. && adk run grafana
+
+# 示例对话
+> 发送所有平台的告警邮件
+> 发送 sdc 和 tpboxv3 平台的告警邮件
+> 发送最近24小时的告警邮件，收件人是 user@example.com
+> exit
+```
+
+**注意**: 使用 ADK Agent 需要先设置 `ZHIPU_API_KEY` 环境变量。
+
+---
+
+## 支持的 Platform
+
+| Platform | 说明 |
+|----------|------|
+| sdc | SDC 平台 |
+| tpboxv3 | TPBox V3 |
+| tpboxv2 | TPBox V2 |
+| android_armv7 | Android ARMv7 |
+| 1800A | 1800A 设备 |
+| rv1109 | RV1109 |
+| tpboxv1 | TPBox V1 |
+
+---
+
+## 邮件内容
+
+每封邮件包含：
+
+- 📊 **17 个监控面板**的截图
+- 📅 **时间范围**: 今天 00:00:00 ~ 现在
+- 🏷️ **Platform 变量**: 对应平台的筛选数据
+
+### 监控面板列表
+
+| Panel ID | 面板名称 | 说明 |
+|----------|----------|------|
+| 29 | 设备在线 | 设备在线状态 |
+| 31 | 崩溃率 | 系统崩溃率 |
+| 27 | 【crash 设备列表】 | 崩溃设备明细 |
+| 19 | 【ffmpeg 拉流异常】 | 视频流异常 |
+| 8 | 数据积压【track上传队列】 | Track 队列积压 |
+| 6 | 数据积压【jpeg】 | JPEG 缓存积压 |
+| 13 | 数据上传失败【uploadTrack】 | Track 上传失败 |
+| 10 | 数据积压【track DB 文件】 | Track DB 积压 |
+| 9 | 数据积压【imageRecord DB 文件】 | ImageRecord DB 积压 |
+| 25 | 【序列化 frame encode】 | 帧编码问题 |
+| 23 | 【磁盘使用率】 | 磁盘使用情况 |
+| 17 | 【空 token】 | Token 异常 |
+| 21 | 【摄像头离线】 | 摄像头离线 |
+| 5 | 数据积压【json】 | JSON 缓存积压 |
+| 15 | 【deadlock】 | 死锁监控 |
+| 11 | 模型调用失败【reid】 | Reid 模型失败 |
+| 12 | 模型调用失败【attr】 | Attr 模型失败 |
+
+---
+
+## 配置说明
+
+### Dashboard 配置
+
+默认监控的 Dashboard：
+- **UID**: `urJcwIvHz`
+- **名称**: 业务异常监控
+- **变量**: `platform` (支持多值筛选)
+
+### 邮件服务器
+
+默认使用腾讯企业邮：
+- **SMTP**: `smtp.exmail.qq.com:465`
+- **SSL**: 是
+
+如需更换邮件服务器，修改 `monitoring/config/email.yaml`。
+
+### 图片压缩
+
+默认压缩配置：
+- **分辨率**: 800x400
+- **JPEG 质量**: 70
+- **压缩率**: 10-50%
+
+---
+
+## 收件人管理
+
+```bash
+# 查看收件人列表
+make list-recipients
+
+# 添加收件人
+make add-recipient EMAIL=user@example.com
+
+# 移除收件人
+make remove-recipient EMAIL=user@example.com
+```
+
+---
 
 ## 故障排查
 
-### Agent 启动失败
+### 邮件发送失败：bad syntax
 
-1. 确保设置了 `ZHIPU_API_KEY`
-2. 检查网络连接到智谱 API
-3. 查看日志: `tail -f /tmp/agents_log/agent.latest.log`
+**原因**: `.env` 文件配置不正确或未加载
 
-### 工具调用失败
+**解决**:
+1. 确认 `.env` 文件存在
+2. 检查 `SENDER_EMAIL` 和 `SENDER_PASSWORD` 正确
+3. 确保安装了 `python-dotenv` (`make install`)
 
-1. 确保 Elasticsearch 可访问
-2. 检查 Grafana API Key (Dashboard 功能需要)
-3. 使用 `make agent-run-simple` 测试工具是否正常
+### 截图下载失败
+
+**原因**: Grafana API Key 无效或网络问题
+
+**解决**:
+1. 检查 `GRAFANA_API_KEY` 是否有效
+2. 确认网络可访问 Grafana 服务器
+
+### 邮件被拒收
+
+**原因**: 邮件大小超限或频率限制
+
+**解决**:
+1. 已启用图片压缩，每封邮件约 200-400KB
+2. 如需调整压缩率，修改 `AlertReportConfig` 中的 `image_width` 和 `image_height`
+
+---
+
+## 项目结构
+
+```
+grafana/
+├── grafana_alert_tool.py   # 核心工具（一键发送）
+├── agent.py                # ADK Agent（对话式）
+├── Makefile                 # 快捷命令
+├── requirements.txt         # Python 依赖
+├── .env                    # 环境变量配置
+├── README.md               # 项目文档
+├── .adk/                   # ADK 配置目录
+│   └── config.yaml
+├── tools/
+│   ├── alert_email_reporter.py  # 底层实现
+│   └── __init__.py
+└── monitoring/
+    └── config/
+        ├── email.yaml      # 邮件服务器配置
+        └── recipients.json # 收件人列表
+```
+
+---
+
+## 依赖项
+
+```
+google-adk>=0.1.0
+httpx>=0.27.0
+pyyaml>=6.0.1
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+```
+
+---
 
 ## 许可证
 
