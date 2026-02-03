@@ -365,8 +365,8 @@ class AlertEmailReporter:
     @staticmethod
     def _compress_image(
         image_data: bytes,
-        max_width: int = 800,
-        max_height: int = 400,
+        max_width: int = 0,
+        max_height: int = 0,
         quality: int = 75,
     ) -> bytes:
         """
@@ -374,8 +374,8 @@ class AlertEmailReporter:
 
         Args:
             image_data: 原始图片数据 (PNG)
-            max_width: 最大宽度
-            max_height: 最大高度
+            max_width: 最大宽度 (0 表示不调整尺寸)
+            max_height: 最大高度 (0 表示不调整尺寸)
             quality: JPEG 质量 (1-100, 越小文件越小)
 
         Returns:
@@ -386,13 +386,15 @@ class AlertEmailReporter:
             img = Image.open(io.BytesIO(image_data))
 
             # 计算新的尺寸（保持宽高比）
-            original_width, original_height = img.size
-            ratio = min(max_width / original_width, max_height / original_height)
+            # 只有当 max_width 和 max_height 都大于 0 时才调整尺寸
+            if max_width > 0 and max_height > 0:
+                original_width, original_height = img.size
+                ratio = min(max_width / original_width, max_height / original_height)
 
-            if ratio < 1:
-                new_width = int(original_width * ratio)
-                new_height = int(original_height * ratio)
-                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                if ratio < 1:
+                    new_width = int(original_width * ratio)
+                    new_height = int(original_height * ratio)
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             # 转换为 RGB (如果是 RGBA)
             if img.mode in ('RGBA', 'LA', 'P'):
@@ -430,51 +432,55 @@ class AlertEmailReporter:
         """
         dashboard_uid = self.grafana.dashboard_uid
         slug = self.grafana.dashboard_slug
-        
+
         # 解析时间范围
         time_from = "now/d" if self.report.time_range == "today" else f"now-{self.report.time_range}"
 
-        # 生成渲染 URL
-        # 添加 scale=0.5 参数压缩图片大小
-        render_url = (
+        # 构建 URL 基础部分
+        url_base = (
             f"{self.grafana.url}/render/d-solo/{dashboard_uid}/{slug}"
             f"?panelId={panel_id}"
             f"&from={time_from}"
             f"&to=now"
             f"&width={self.report.image_width}"
             f"&height={self.report.image_height}"
-            f"&scale=0.5"  # 压缩图片为原始大小的 50%
             f"&timezone=Asia%2FShanghai"
             f"&var-platform={platform}"
         )
-        
+
+        # 下载 URL：使用 scale=0.5 减小下载大小
+        download_url = url_base + "&scale=0.5"
+
+        # Fallback URL：全分辨率，用于在新窗口打开查看大图
+        fallback_url = url_base
+
         # 设置请求头
         headers = {}
         if self.grafana.api_key:
             headers["Authorization"] = f"Bearer {self.grafana.api_key}"
-        
+
         try:
             async with httpx.AsyncClient(headers=headers, timeout=60.0) as client:
-                response = await client.get(render_url)
-                
+                response = await client.get(download_url)
+
                 content_type = response.headers.get("content-type", "")
-                
+
                 if "text/html" in content_type or response.status_code != 200:
                     return {
                         "success": False,
                         "status": "render_unavailable",
-                        "fallback_url": render_url
+                        "fallback_url": fallback_url
                     }
-                
+
                 response.raise_for_status()
 
-                # 压缩图片以减小邮件大小
+                # 压缩图片以减小邮件大小（不调整尺寸，仅调整 JPEG 质量）
                 original_size = len(response.content)
                 compressed_data = self._compress_image(
                     response.content,
-                    max_width=800,
-                    max_height=400,
-                    quality=70,
+                    max_width=0,
+                    max_height=0,
+                    quality=75,
                 )
                 compressed_size = len(compressed_data)
                 compression_ratio = (1 - compressed_size / original_size) * 100
@@ -486,7 +492,7 @@ class AlertEmailReporter:
                     "original_size": original_size,
                     "compressed_size": compressed_size,
                     "compression_ratio": compression_ratio,
-                    "fallback_url": render_url
+                    "fallback_url": fallback_url  # 返回全分辨率 URL
                 }
         
         except Exception as e:
@@ -511,7 +517,7 @@ class AlertEmailReporter:
                 image_base64 = base64.b64encode(result["image_data"]).decode('utf-8')
                 panels_data[panel_id] = {
                     "image_base64": image_base64,
-                    "render_url": result["fallback_url"]
+                    "fallback_url": result["fallback_url"]
                 }
 
                 # 显示压缩信息
@@ -540,21 +546,26 @@ class AlertEmailReporter:
         for panel_id, panel_info in self.unique_panels.items():
             title = panel_info["title"]
             panel_data = panels_data.get(panel_id)
-            
+
             if panel_data and panel_data.get("image_base64"):
                 # 有截图
+                fallback_url = panel_data.get("fallback_url", "")
                 panels_html += f"""
                 <div style="margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #e0e0e0;">
                     <div style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px;">
                         📊 {title}
                     </div>
                     <div style="text-align: center;">
-                        <img src="data:image/png;base64,{panel_data['image_base64']}" 
-                             alt="{title}" 
-                             style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <a href="{fallback_url}" target="_blank" style="display: inline-block;">
+                            <img src="data:image/jpeg;base64,{panel_data['image_base64']}"
+                                 alt="{title}"
+                                 style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;">
+                        </a>
                     </div>
-                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    <div style="margin-top: 10px; font-size: 12px; color: #666; text-align: center;">
                         时间范围: {time_range_display} | Platform: {platform}
+                        <br>
+                        <a href="{fallback_url}" target="_blank" style="color: #007bff; text-decoration: none;">🔗 点击图片在新窗口打开大图</a>
                     </div>
                 </div>
                 """
