@@ -5,7 +5,8 @@
 import asyncio
 import os
 import json
-from typing import List
+from datetime import datetime, timezone, timedelta
+from typing import List, Dict, Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -23,6 +24,9 @@ from .client import TupuBiClient
 server = Server("tupu-bi-mcp-server")
 
 DEFAULT_API_BASE = "https://api.bi.tuputech.com"
+
+# 北京时区 (UTC+8)
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 
 @server.list_tools()
@@ -151,6 +155,21 @@ async def list_tools() -> List[Tool]:
                     },
                 },
                 "required": ["device_id", "token_id"],
+            },
+        ),
+        Tool(
+            name="get_beijing_time",
+            description="获取当前北京时间（UTC+8）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format": {
+                        "type": "string",
+                        "description": "时间格式。支持: 'iso' (ISO 8601格式), 'timestamp' (Unix时间戳，秒), 'timestamp_ms' (Unix时间戳，毫秒), 'readable' (可读格式)。默认 'iso'",
+                        "enum": ["iso", "timestamp", "timestamp_ms", "readable"],
+                        "default": "iso",
+                    }
+                },
             },
         ),
     ]
@@ -298,6 +317,40 @@ async def call_tool(tool_name: str, arguments: dict) -> CallToolResult:
                 )
 
             result = await client.get_device_full_info(device_id, token_id, secret, expires_in)
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+            )
+
+        elif tool_name == "get_beijing_time":
+            # 获取当前北京时间
+            format_type = arguments.get("format", "iso")
+            now_beijing = datetime.now(BEIJING_TZ)
+
+            result: Dict[str, Any] = {
+                "timezone": "Asia/Shanghai (UTC+8)",
+                "timezone_offset": "+08:00",
+            }
+
+            if format_type == "iso":
+                result["datetime"] = now_beijing.isoformat()
+                result["format"] = "ISO 8601"
+            elif format_type == "timestamp":
+                result["timestamp"] = int(now_beijing.timestamp())
+                result["format"] = "Unix timestamp (seconds)"
+            elif format_type == "timestamp_ms":
+                result["timestamp_ms"] = int(now_beijing.timestamp() * 1000)
+                result["format"] = "Unix timestamp (milliseconds)"
+            elif format_type == "readable":
+                result["datetime"] = now_beijing.strftime("%Y-%m-%d %H:%M:%S")
+                result["format"] = "Readable"
+                result["year"] = str(now_beijing.year)
+                result["month"] = str(now_beijing.month)
+                result["day"] = str(now_beijing.day)
+                result["hour"] = str(now_beijing.hour)
+                result["minute"] = str(now_beijing.minute)
+                result["second"] = str(now_beijing.second)
+                result["weekday"] = now_beijing.strftime("%A")
 
             return CallToolResult(
                 content=[TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
