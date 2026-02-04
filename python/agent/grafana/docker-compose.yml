@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  grafana-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: grafana-alert-scheduler:latest
+    container_name: grafana-alert-scheduler
+    restart: unless-stopped
+
+    # 环境变量配置
+    environment:
+      # Grafana 配置
+      - GRAFANA_URL=${GRAFANA_URL:-https://g.dev.tuputech.com}
+      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
+
+      # SMTP 配置
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+      - SENDER_NAME=${SENDER_NAME:-[Grafana-Alert-System]}
+      - RECIPIENTS_TO=${RECIPIENTS_TO}
+
+      # 调度器配置
+      # 方式1: 每天固定时间执行
+      - ALERT_SCHEDULE_TIME=${ALERT_SCHEDULE_TIME:-09:00}
+
+      # 方式2: 按小时间隔执行 (设置后将覆盖 ALERT_SCHEDULE_TIME)
+      # - ALERT_INTERVAL_HOURS=6
+
+      # 告警配置
+      - TIME_RANGE=${TIME_RANGE:-today}
+      # - ALERT_PLATFORMS=sdc,tpboxv3
+
+      # 启动时立即执行一次
+      - RUN_ON_START=${RUN_ON_START:-false}
+
+      # 调度循环检查间隔 (秒)
+      - SCHEDULER_LOOP_INTERVAL=60
+
+    # 可选: 挂载配置目录 (持久化收件人列表)
+    volumes:
+      - ./monitoring/config:/app/monitoring/config:rw
+      - ./logs:/app/logs:rw
+
+    # 日志配置
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import schedule; print('OK')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # 可选: 手动触发服务 (一次性执行)
+  grafana-alert-once:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: grafana-alert-scheduler:latest
+    container_name: grafana-alert-once
+    environment:
+      - GRAFANA_URL=${GRAFANA_URL:-https://g.dev.tuputech.com}
+      - GRAFANA_API_KEY=${GRAFANA_API_KEY}
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+      - SENDER_NAME=${SENDER_NAME:-[Grafana-Alert-System]}
+      - RECIPIENTS_TO=${RECIPIENTS_TO}
+      - TIME_RANGE=${TIME_RANGE:-today}
+    volumes:
+      - ./monitoring/config:/app/monitoring/config:ro
+    command: ["python3", "grafana_alert_tool.py", "--time-range", "${TIME_RANGE:-today}"]
+    profiles:
+      - manual

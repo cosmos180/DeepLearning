@@ -112,6 +112,24 @@ cd .. && adk run grafana
 
 **注意**: 使用 ADK Agent 需要先设置 `ZHIPU_API_KEY` 环境变量。
 
+### 方式 4: 定时调度器（后台自动运行）
+
+支持每天固定时间或按间隔自动发送告警邮件。
+
+```bash
+# 启动定时调度器（每天 09:00 执行）
+make scheduler
+
+# 自定义执行时间
+ALERT_SCHEDULE_TIME=14:30 make scheduler
+
+# 每 6 小时执行一次
+ALERT_INTERVAL_HOURS=6 make scheduler
+
+# 启动时立即执行一次
+RUN_ON_START=true make scheduler
+```
+
 ---
 
 ## 支持的 Platform
@@ -201,6 +219,62 @@ make remove-recipient EMAIL=user@example.com
 
 ---
 
+## Docker 部署
+
+### 快速开始
+
+```bash
+# 1. 构建镜像
+make docker-build
+
+# 2. 启动定时调度服务
+make docker-up
+
+# 3. 查看日志
+make docker-logs
+
+# 4. 停止服务
+make docker-down
+```
+
+### Docker Compose 配置
+
+```bash
+# 使用 docker-compose 直接启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 手动执行一次
+docker-compose --profile manual run --rm grafana-alert-once
+```
+
+### 环境变量配置
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `ALERT_SCHEDULE_TIME` | `09:00` | 每天执行时间 |
+| `ALERT_INTERVAL_HOURS` | - | 按小时间隔执行（覆盖固定时间） |
+| `TIME_RANGE` | `today` | 告警时间范围 |
+| `RUN_ON_START` | `false` | 启动时立即执行 |
+| `ALERT_PLATFORMS` | - | 指定平台，逗号分隔 |
+| `SCHEDULER_LOOP_INTERVAL` | `60` | 调度循环检查间隔（秒） |
+
+### 示例：每小时执行一次
+
+```bash
+# docker-compose.yml
+services:
+  grafana-scheduler:
+    environment:
+      - ALERT_INTERVAL_HOURS=1
+      - TIME_RANGE=1h
+      - RUN_ON_START=true
+```
+
+---
+
 ## 故障排查
 
 ### 邮件发送失败：bad syntax
@@ -235,9 +309,12 @@ make remove-recipient EMAIL=user@example.com
 ```
 grafana/
 ├── grafana_alert_tool.py   # 核心工具（一键发送）
-├── agent.py                # ADK Agent（对话式）
-├── Makefile                 # 快捷命令
-├── requirements.txt         # Python 依赖
+├── scheduler.py            # 定时调度器（后台自动运行）
+├── root_agent.py           # ADK Agent（对话式）
+├── Dockerfile              # Docker 镜像构建
+├── docker-compose.yml      # Docker Compose 配置
+├── Makefile                # 快捷命令
+├── requirements.txt        # Python 依赖
 ├── .env                    # 环境变量配置
 ├── README.md               # 项目文档
 ├── .adk/                   # ADK 配置目录
@@ -261,6 +338,7 @@ httpx>=0.27.0
 pyyaml>=6.0.1
 Pillow>=10.0.0
 python-dotenv>=1.0.0
+schedule>=1.2.0
 ```
 
 ---

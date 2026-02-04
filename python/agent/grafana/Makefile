@@ -1,4 +1,4 @@
-.PHONY: help install send send-all agent-run agent-test
+.PHONY: help install send send-all agent-run agent-test scheduler scheduler-once docker-build docker-up docker-down docker-logs
 
 # 默认目标
 help:
@@ -83,3 +83,81 @@ agent-test:
 	@echo "测试 ADK Agent..."
 	@echo "python3 -c 'from grafana.root_agent import root_agent; print(root_agent)'"
 	python3 -c "from grafana.root_agent import root_agent; print(root_agent)"
+
+# =============================================================================
+# 定时调度器 (Python Scheduler)
+# =============================================================================
+
+# 启动定时调度器（本地运行）
+scheduler:
+	@echo "启动 Grafana 告警定时调度器..."
+	@echo "配置:"
+	@echo "  ALERT_SCHEDULE_TIME=$(or $(ALERT_SCHEDULE_TIME),09:00)"
+	@echo "  TIME_RANGE=$(or $(TIME_RANGE),today)"
+	@echo "  RUN_ON_START=$(or $(RUN_ON_START),false)"
+	python3 scheduler.py
+
+# 立即执行一次（不启动调度器）
+scheduler-once:
+	@echo "立即执行告警发送..."
+	RUN_ON_START=true ALERT_SCHEDULE_TIME=none python3 scheduler.py
+
+# =============================================================================
+# Docker 部署
+# =============================================================================
+
+# 构建 Docker 镜像
+docker-build:
+	@echo "构建 Docker 镜像..."
+	docker-compose build
+
+# 启动 Docker 服务（后台运行）
+docker-up:
+	@echo "启动 Docker 服务..."
+	docker-compose up -d grafana-scheduler
+	@echo ""
+	@echo "查看日志: make docker-logs"
+	@echo "停止服务: make docker-down"
+
+# 停止 Docker 服务
+docker-down:
+	@echo "停止 Docker 服务..."
+	docker-compose down
+
+# 查看 Docker 日志
+docker-logs:
+	docker-compose logs -f grafana-scheduler
+
+# Docker 手动执行一次
+docker-once:
+	@echo "在 Docker 中执行一次告警发送..."
+	docker-compose --profile manual run --rm grafana-alert-once
+
+# 重启 Docker 服务
+docker-restart: docker-down docker-up
+
+# =============================================================================
+# 调度器配置说明
+# =============================================================================
+
+scheduler-help:
+	@echo "定时调度器使用说明"
+	@echo ""
+	@echo "环境变量:"
+	@echo "  ALERT_SCHEDULE_TIME   每天执行时间 (默认: 09:00)"
+	@echo "  ALERT_INTERVAL_HOURS  按小时间隔执行 (覆盖 ALERT_SCHEDULE_TIME)"
+	@echo "  TIME_RANGE            告警时间范围 (默认: today)"
+	@echo "  RUN_ON_START          启动时立即执行 (默认: false)"
+	@echo "  ALERT_PLATFORMS       指定平台，逗号分隔 (默认: 全部)"
+	@echo ""
+	@echo "本地运行示例:"
+	@echo "  make scheduler                              # 默认 09:00 执行"
+	@echo "  ALERT_SCHEDULE_TIME=14:30 make scheduler    # 14:30 执行"
+	@echo "  ALERT_INTERVAL_HOURS=6 make scheduler       # 每6小时执行"
+	@echo "  RUN_ON_START=true make scheduler            # 启动立即执行"
+	@echo ""
+	@echo "Docker 运行示例:"
+	@echo "  make docker-build    # 构建镜像"
+	@echo "  make docker-up       # 启动服务"
+	@echo "  make docker-logs     # 查看日志"
+	@echo "  make docker-down     # 停止服务"
