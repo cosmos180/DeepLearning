@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision-0 Enhanced — AI 影视制片厂</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0f;
+      color: #e2e8f0;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glow-purple {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    }
+
+    .glow-blue {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .agent-card {
+      transition: all 0.3s ease;
+    }
+
+    .agent-card.active {
+      border-color: rgba(139, 92, 246, 0.6);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+    }
+
+    .agent-card.completed {
+      border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    .agent-card.reflecting {
+      border-color: rgba(251, 191, 36, 0.5);
+      box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+    }
+
+    .log-entry {
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .pulse-dot {
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    .step-connector {
+      background: linear-gradient(to right, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3));
+    }
+
+    .artifact-card:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .artifact-card {
+      transition: all 0.2s ease;
+    }
+
+    .modal-overlay {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .markdown-content h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      margin: 1em 0 0.5em;
+      color: #c4b5fd;
+    }
+
+    .markdown-content h2 {
+      font-size: 1.2em;
+      font-weight: 600;
+      margin: 0.8em 0 0.4em;
+      color: #a78bfa;
+    }
+
+    .markdown-content h3 {
+      font-size: 1.05em;
+      font-weight: 600;
+      margin: 0.6em 0 0.3em;
+      color: #8b5cf6;
+    }
+
+    .markdown-content p {
+      margin: 0.4em 0;
+      line-height: 1.7;
+    }
+
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8em 0;
+      font-size: 0.85em;
+    }
+
+    .markdown-content th {
+      background: rgba(139, 92, 246, 0.2);
+      padding: 6px 10px;
+      text-align: left;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .markdown-content td {
+      padding: 5px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .markdown-content tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .markdown-content strong {
+      color: #c4b5fd;
+    }
+
+    .markdown-content code {
+      background: rgba(139, 92, 246, 0.15);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    .markdown-content blockquote {
+      border-left: 3px solid #8b5cf6;
+      padding-left: 12px;
+      color: #94a3b8;
+      margin: 0.5em 0;
+    }
+
+    .markdown-content ul,
+    .markdown-content ol {
+      padding-left: 1.5em;
+      margin: 0.4em 0;
+    }
+
+    .markdown-content li {
+      margin: 0.2em 0;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.4);
+      border-radius: 3px;
+    }
+
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="glass border-b border-white/10 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-sm font-bold">
+          V0</div>
+        <div>
+          <h1 class="font-semibold text-white">Vision-0 Enhanced</h1>
+          <p class="text-xs text-slate-400">AI 影视制片厂 · 多智能体系统</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs glass">
+          <div class="w-2 h-2 rounded-full bg-slate-500" id="status-dot"></div>
+          <span id="status-text">就绪</span>
+        </div>
+        <button onclick="resetProject()"
+          class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/10 transition-all">重置</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- 项目启动面板 -->
+    <div class="glass rounded-2xl p-6" id="launch-panel">
+      <h2 class="text-lg font-semibold text-white mb-4">🎬 启动新项目</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="md:col-span-3">
+          <label class="block text-xs text-slate-400 mb-2">创意种子 <span class="text-purple-400">*</span></label>
+          <textarea id="seed-input" rows="3" placeholder="输入你的创意想法，例如：一个失忆的机器人在废弃城市中寻找自己的制造者，却发现真相比遗忘更残忍..."
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-2">目标内容类型</label>
+          <div class="relative" id="duration-dropdown">
+            <button type="button" onclick="toggleDropdown('duration')"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/50 text-left flex items-center justify-between">
+              <span id="duration-selected">30分钟剧集试播集</span>
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div id="duration-options" class="absolute z-50 w-full mt-1 bg-[#1a1a2e] border border-white/10 rounded-xl overflow-hidden hidden shadow-lg">
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="3分钟竖屏微短剧">3分钟竖屏微短剧</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="5分钟概念短片">5分钟概念短片</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="15分钟电影节剧情短片">15分钟电影节剧情短片</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-white bg-purple-500/20 cursor-pointer" data-value="30分钟剧集试播集">30分钟剧集试播集</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="60分钟流媒体大电影">60分钟流媒体大电影</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="90分钟院线标准长片">90分钟院线标准长片</div>
+              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="120分钟史诗级巨制">120分钟史诗级巨制</div>
+            </div>
+          </div>
+          <input type="hidden" id="duration-input" value="30分钟剧集试播集">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-2">风格基调</label>
+          <input id="style-input" type="text" value="科幻+温情" placeholder="例如：悬疑+黑色幽默"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50" />
+        </div>
+      </div>
+
+      <!-- AI 模型高级配置 -->
+      <details class="mb-4 text-sm group">
+        <summary
+          class="cursor-pointer text-slate-400 font-medium hover:text-white transition-colors duration-200 user-select-none outline-none">
+          ⚙️ 高级模型配置（选填）
+        </summary>
+        <div
+          class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-white/5 border border-white/10 rounded-xl"
+          id="model-config-panel">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">✍️ 原著作者模型</label>
+            <input type="text" id="model-creator" placeholder="默认模型"
+              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+              list="model-suggestions" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">📝 编剧模型</label>
+            <input type="text" id="model-screenwriter" placeholder="默认模型"
+              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+              list="model-suggestions" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">🎨 艺术总监模型</label>
+            <input type="text" id="model-art_director" placeholder="默认模型"
+              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+              list="model-suggestions" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">🔍 剧本评审模型</label>
+            <input type="text" id="model-reviewer" placeholder="默认模型"
+              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+              list="model-suggestions" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">🎬 导演模型</label>
+            <input type="text" id="model-director" placeholder="默认模型"
+              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+              list="model-suggestions" />
+          </div>
+        </div>
+        <datalist id="model-suggestions">
+          <option value="anthropic/claude-3.5-sonnet"></option>
+          <option value="openai/gpt-4o"></option>
+          <option value="openai/gpt-4o-mini"></option>
+          <option value="meta-llama/llama-3-70b-instruct"></option>
+          <option value="google/gemini-2.5-pro"></option>
+          <option value="deepseek/deepseek-chat"></option>
+        </datalist>
+      </details>
+
+      <div class="flex items-end mb-4">
+        <button onclick="startProject()" id="start-btn"
+          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm hover:from-purple-500 hover:to-blue-500 transition-all glow-purple">
+          开始创作
+        </button>
+      </div>
+
+      <!-- 快速示例 -->
+      <div class="flex flex-wrap gap-2">
+        <span class="text-xs text-slate-500">快速示例：</span>
+        <button onclick="fillExample(0)"
+          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">失忆机器人</button>
+        <button onclick="fillExample(1)"
+          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">最后的书店</button>
+        <button onclick="fillExample(2)"
+          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">时间快递员</button>
+      </div>
+    </div>
+
+    <!-- 工作流进度 -->
+    <div id="workflow-panel" class="hidden">
+      <h2 class="text-lg font-semibold text-white mb-4">工作流进度</h2>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="agent-cards">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="main-content" style="display:none!important">
+
+      <!-- 左：实时日志 -->
+      <div class="lg:col-span-1">
+        <div class="glass rounded-2xl p-5 h-full">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-medium text-white text-sm">实时日志</h3>
+            <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse" style="display:none"></div>
+          </div>
+          <div id="log-container" class="space-y-2 max-h-96 overflow-y-auto pr-1">
+            <p class="text-xs text-slate-500 text-center py-4">等待项目启动...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：产出物面板 -->
+      <div class="lg:col-span-2">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-medium text-white text-sm mb-4">产出物</h3>
+          <div id="artifacts-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <p class="text-xs text-slate-500 col-span-3 text-center py-4">产出物将在创作过程中陆续出现...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可观测性面板 -->
+    <div id="observability-panel" class="hidden">
+      <div class="glass rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-medium text-white text-sm">可观测性追踪</h3>
+          <button onclick="loadTraces()" class="text-xs text-purple-400 hover:text-purple-300">刷新</button>
+        </div>
+        <div id="traces-container" class="space-y-2 max-h-64 overflow-y-auto">
+          <p class="text-xs text-slate-500 text-center py-4">暂无追踪数据</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 产出物详情 Modal -->
+  <div id="artifact-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="glass rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between p-5 border-b border-white/10">
+        <h3 id="modal-title" class="font-semibold text-white"></h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div id="modal-content" class="flex-1 overflow-y-auto p-5 markdown-content text-sm text-slate-300"></div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8765';
+    let eventSource = null;
+    let currentArtifacts = {};
+
+    const EXAMPLES = [
+      { seed: "一个失忆的机器人在废弃城市中寻找自己的制造者，却发现真相比遗忘更残忍——它的制造者正是它自己", style: "科幻+悬疑" },
+      { seed: "城市最后一家实体书店的老板，在拆迁前夜收到了一封来自未来的信，信中只有一句话：不要卖掉那本红色的书", style: "魔幻现实+温情" },
+      { seed: "一个专门递送'时间胶囊'的快递员，意外打开了一个寄给自己的包裹，里面是他从未寄出的道歉", style: "奇幻+治愈" },
+    ];
+
+    const AGENTS = [
+      { id: 'creator', name: '原著作者', icon: '✍️', desc: '创作故事圣经' },
+      { id: 'screenwriter', name: '编剧', icon: '📝', desc: '撰写剧本' },
+      { id: 'art_director', name: '艺术总监', icon: '🎨', desc: '视觉风格圣经' },
+      { id: 'reviewer', name: '剧本评审', icon: '🔍', desc: '临床诊断报告' },
+      { id: 'director', name: '导演', icon: '🎬', desc: '分镜与视频Prompt' },
+    ];
+
+    const ARTIFACT_LABELS = {
+      logline: { label: 'Logline', icon: '💡', color: 'purple' },
+      character_sheets: { label: '角色设定', icon: '👥', color: 'blue' },
+      beat_sheet: { label: '节拍表', icon: '📋', color: 'indigo' },
+      script: { label: '剧本', icon: '📄', color: 'violet' },
+      script_notes: { label: '编剧备注', icon: '📌', color: 'slate' },
+      review_report: { label: '评审报告', icon: '🏥', color: 'rose' },
+      shot_list: { label: '分镜清单', icon: '🎞️', color: 'amber' },
+      video_prompts: { label: '视频Prompt', icon: '🎥', color: 'green' },
+      director_notes: { label: '导演备注', icon: '🎭', color: 'teal' },
+      style_guide: { label: '视觉风格圣经', icon: '🖼️', color: 'pink' },
+    };
+
+    function fillExample(idx) {
+      const ex = EXAMPLES[idx];
+      document.getElementById('seed-input').value = ex.seed;
+      document.getElementById('style-input').value = ex.style;
+    }
+
+    async function startProject() {
+      const seed = document.getElementById('seed-input').value.trim();
+      if (!seed) { alert('请输入创意种子！'); return; }
+
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = '启动中...';
+
+      try {
+        const res = await fetch(`${API}/api/project/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            seed,
+            target_duration: document.getElementById('duration-input').value,
+            style: document.getElementById('style-input').value,
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.detail || '启动失败');
+          btn.disabled = false; btn.textContent = '开始创作';
+          return;
+        }
+        showWorkflowUI();
+        connectSSE();
+      } catch (e) {
+        alert('连接服务器失败，请确认后端已启动');
+        btn.disabled = false; btn.textContent = '开始创作';
+      }
+    }
+
+    async function resetProject() {
+      if (!confirm('确认重置？所有数据将被清空。')) return;
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      await fetch(`${API}/api/project/reset`, { method: 'POST' });
+      location.reload();
+    }
+
+    function showWorkflowUI() {
+      document.getElementById('workflow-panel').classList.remove('hidden');
+      document.getElementById('main-content').style.display = '';
+      document.getElementById('observability-panel').classList.remove('hidden');
+      document.getElementById('log-pulse').style.display = 'block';
+      renderAgentCards({});
+    }
+
+    function connectSSE() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(`${API}/api/events`);
+
+      eventSource.addEventListener('init', e => handleUpdate(JSON.parse(e.data)));
+      eventSource.addEventListener('update', e => handleUpdate(JSON.parse(e.data)));
+      eventSource.addEventListener('heartbeat', () => { });
+      eventSource.onerror = () => {
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    function handleUpdate(data) {
+      if (data.workflow) updateStatus(data.workflow);
+      if (data.logs) renderLogs(data.logs);
+      if (data.artifacts) {
+        currentArtifacts = data.artifacts;
+        renderArtifacts(data.artifacts);
+        updateAgentCardsFromLogs(data.logs || []);
+      }
+    }
+
+    function updateStatus(workflow) {
+      if (!workflow) return;
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      const step = workflow.current_step || '';
+
+      const statusMap = {
+        running: { color: 'bg-purple-400', text: step || '运行中' },
+        completed: { color: 'bg-green-400', text: '制作完成 🎉' },
+        failed: { color: 'bg-red-400', text: '执行失败' },
+        idle: { color: 'bg-slate-500', text: '就绪' },
+      };
+      const s = statusMap[workflow.status] || statusMap.idle;
+      dot.className = `w-2 h-2 rounded-full ${s.color}`;
+      text.textContent = s.text;
+
+      if (workflow.status === 'completed') {
+        document.getElementById('log-pulse').style.display = 'none';
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('start-btn').textContent = '开始创作';
+        loadTraces();
+      }
+    }
+
+    function renderAgentCards(agentStatuses) {
+      const container = document.getElementById('agent-cards');
+      container.innerHTML = AGENTS.map(a => {
+        const st = agentStatuses[a.id] || 'idle';
+        let cls = 'idle', statusText = '等待中', dotCls = 'bg-slate-600';
+        if (st === 'thinking') { cls = 'active'; statusText = '工作中...'; dotCls = 'bg-purple-400 pulse-dot'; }
+        else if (st === 'reflecting') { cls = 'reflecting'; statusText = '反思中...'; dotCls = 'bg-yellow-400 pulse-dot'; }
+        else if (st === 'completed') { cls = 'completed'; statusText = '已完成'; dotCls = 'bg-green-400'; }
+        else if (st === 'failed') { cls = ''; statusText = '失败'; dotCls = 'bg-red-400'; }
+
+        return `<div class="agent-card glass rounded-xl p-4 ${cls}">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xl">${a.icon}</span>
+        <div class="w-2 h-2 rounded-full ${dotCls}"></div>
+      </div>
+      <div class="font-medium text-sm text-white">${a.name}</div>
+      <div class="text-xs text-slate-400 mt-1">${a.desc}</div>
+      <div class="text-xs text-slate-500 mt-2">${statusText}</div>
+    </div>`;
+      }).join('');
+    }
+
+    function updateAgentCardsFromLogs(logs) {
+      const agentStatuses = {};
+      const agentNameMap = {
+        '原著作者': 'creator', '编剧': 'screenwriter',
+        '艺术总监': 'art_director', '剧本评审': 'reviewer', '导演': 'director',
+      };
+      logs.forEach(log => {
+        const id = agentNameMap[log.agent];
+        if (id) agentStatuses[id] = log.status;
+      });
+      renderAgentCards(agentStatuses);
+    }
+
+    function renderLogs(logs) {
+      const container = document.getElementById('log-container');
+      if (!logs || logs.length === 0) return;
+
+      const statusIcons = {
+        thinking: '🔵', reflecting: '🟡', completed: '🟢', failed: '🔴', idle: '⚪'
+      };
+
+      container.innerHTML = logs.map(log => {
+        const icon = statusIcons[log.status] || '⚪';
+        const time = log.time ? new Date(log.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+        return `<div class="log-entry flex gap-2 text-xs">
+      <span class="flex-shrink-0 mt-0.5">${icon}</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-medium text-slate-300">${log.agent}</span>
+          <span class="text-slate-600 text-[10px]">${time}</span>
+        </div>
+        <div class="text-slate-400 mt-0.5 truncate">${log.message}</div>
+        ${log.detail ? `<div class="text-slate-600 mt-0.5 text-[10px] line-clamp-2">${log.detail}</div>` : ''}
+      </div>
+    </div>`;
+      }).join('');
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderArtifacts(artifacts) {
+      const grid = document.getElementById('artifacts-grid');
+      const entries = Object.entries(artifacts);
+      if (entries.length === 0) return;
+
+      grid.innerHTML = entries.map(([type, info]) => {
+        const meta = ARTIFACT_LABELS[type] || { label: type, icon: '📄', color: 'slate' };
+        const colorMap = {
+          purple: 'border-purple-500/30 hover:border-purple-500/60',
+          blue: 'border-blue-500/30 hover:border-blue-500/60',
+          indigo: 'border-indigo-500/30 hover:border-indigo-500/60',
+          violet: 'border-violet-500/30 hover:border-violet-500/60',
+          rose: 'border-rose-500/30 hover:border-rose-500/60',
+          amber: 'border-amber-500/30 hover:border-amber-500/60',
+          green: 'border-green-500/30 hover:border-green-500/60',
+          teal: 'border-teal-500/30 hover:border-teal-500/60',
+          pink: 'border-pink-500/30 hover:border-pink-500/60',
+          slate: 'border-slate-500/30 hover:border-slate-500/60',
+        };
+        const borderCls = colorMap[meta.color] || colorMap.slate;
+        const chars = info.length || 0;
+        const ver = info.version || 1;
+
+        return `<div class="artifact-card glass rounded-xl p-3 cursor-pointer border ${borderCls}"
+        onclick="openArtifact('${type}', '${meta.label}')">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-lg">${meta.icon}</span>
+        ${ver > 1 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">v${ver}</span>` : ''}
+      </div>
+      <div class="font-medium text-xs text-white mb-1">${meta.label}</div>
+      <div class="text-[10px] text-slate-500">${chars.toLocaleString()} 字符</div>
+      ${info.preview ? `<div class="text-[10px] text-slate-500 mt-1.5 line-clamp-2">${info.preview}</div>` : ''}
+    </div>`;
+      }).join('');
+    }
+
+    async function openArtifact(type, label) {
+      document.getElementById('modal-title').textContent = `${ARTIFACT_LABELS[type]?.icon || '📄'} ${label}`;
+      document.getElementById('modal-content').innerHTML = '<p class="text-slate-500 text-center py-8">加载中...</p>';
+      document.getElementById('artifact-modal').classList.remove('hidden');
+
+      try {
+        const res = await fetch(`${API}/api/artifact/${type}`);
+        const data = await res.json();
+        const html = marked.parse(data.content || '（内容为空）');
+        document.getElementById('modal-content').innerHTML = html;
+      } catch (e) {
+        document.getElementById('modal-content').innerHTML = '<p class="text-red-400 text-center py-8">加载失败</p>';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('artifact-modal').classList.add('hidden');
+    }
+
+    document.getElementById('artifact-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('artifact-modal')) closeModal();
+    });
+
+    async function loadTraces() {
+      try {
+        const res = await fetch(`${API}/api/traces`);
+        const data = await res.json();
+        const container = document.getElementById('traces-container');
+
+        if (!data.traces || data.traces.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">暂无追踪数据</p>';
+          return;
+        }
+
+        const eventColors = {
+          llm_call_round_0: 'text-blue-400', llm_response_round_0: 'text-green-400',
+          reflection: 'text-yellow-400', llm_call_round_1: 'text-blue-300',
+          llm_response_round_1: 'text-green-300',
+        };
+
+        container.innerHTML = data.traces.map(t => {
+          const color = eventColors[t.event] || 'text-slate-400';
+          const time = t.time ? new Date(t.time).toLocaleTimeString('zh-CN') : '';
+          return `<div class="flex gap-3 text-xs py-1.5 border-b border-white/5">
+        <span class="text-slate-600 flex-shrink-0 w-16">${time}</span>
+        <span class="font-medium text-slate-300 flex-shrink-0 w-20 truncate">${t.agent}</span>
+        <span class="${color} flex-shrink-0 w-32 truncate">${t.event}</span>
+        ${t.tokens ? `<span class="text-slate-500 flex-shrink-0">${t.tokens}tok</span>` : '<span class="w-12"></span>'}
+        ${t.duration_ms ? `<span class="text-slate-600 flex-shrink-0">${t.duration_ms}ms</span>` : ''}
+        <span class="text-slate-600 truncate flex-1">${t.content?.substring(0, 80) || ''}</span>
+      </div>`;
+        }).join('');
+      } catch (e) { }
+    }
+
+    // 自定义下拉框
+    function toggleDropdown(id) {
+      const options = document.getElementById(`${id}-options`);
+      const allDropdowns = document.querySelectorAll('[id$="-options"]');
+      allDropdowns.forEach(d => { if (d.id !== `${id}-options`) d.classList.add('hidden'); });
+      options.classList.toggle('hidden');
+    }
+
+    document.querySelectorAll('.dropdown-option').forEach(opt => {
+      opt.addEventListener('click', function() {
+        const value = this.dataset.value;
+        const dropdown = this.closest('[id$="-dropdown"]');
+        const id = dropdown.id.replace('-dropdown', '');
+        document.getElementById(`${id}-selected`).textContent = value;
+        document.getElementById(`${id}-input`).value = value;
+
+        // 更新选中状态样式
+        this.parentElement.querySelectorAll('.dropdown-option').forEach(o => {
+          o.classList.remove('bg-purple-500/20', 'text-white');
+          o.classList.add('text-slate-300');
+        });
+        this.classList.add('bg-purple-500/20', 'text-white');
+        this.classList.remove('text-slate-300');
+
+        this.parentElement.classList.add('hidden');
+      });
+    });
+
+    // 点击外部关闭下拉框
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('[id$="-dropdown"]')) {
+        document.querySelectorAll('[id$="-options"]').forEach(d => d.classList.add('hidden'));
+      }
+    });
+
+    // 页面加载时检查状态
+    window.addEventListener('load', async () => {
+      try {
+        const res = await fetch(`${API}/api/state`);
+        const data = await res.json();
+        if (data.workflow && ['running', 'completed'].includes(data.workflow.status)) {
+          showWorkflowUI();
+          handleUpdate(data);
+          if (data.workflow.status === 'running') connectSSE();
+          if (data.workflow.status === 'completed') loadTraces();
+        }
+      } catch (e) { }
+    });
+  </script>
+</body>
+
+</html>
