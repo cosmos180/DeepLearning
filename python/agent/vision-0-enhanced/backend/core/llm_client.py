@@ -4,7 +4,15 @@ llm_client.py — LLM 调用客户端
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载 .env 文件
+env_path = Path(__file__).parent.parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 import time
+import httpx
 from openai import AsyncOpenAI
 from typing import Optional, AsyncGenerator
 
@@ -12,7 +20,33 @@ from typing import Optional, AsyncGenerator
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gpt-4.1-mini")
 FAST_MODEL = os.getenv("FAST_MODEL", "gpt-4.1-mini")
 
-_client = AsyncOpenAI()
+# Cherry Studio 配置
+CHERRY_API_URL = os.getenv("CHERRY_API_URL", "http://127.0.0.1:23333/v1")
+CHERRY_API_KEY = os.getenv("CHERRY_API_KEY", "")
+
+# 代理配置（支持 HTTP_PROXY 或 HTTPS_PROXY）
+proxy_url = os.getenv("HTTP_PROXY") or os.getenv("HTTPS_PROXY")
+http_client = None
+if proxy_url:
+    http_client = httpx.AsyncClient(proxy=proxy_url)
+
+# OpenRouter 客户端（默认）
+_client = AsyncOpenAI(
+    max_retries=0,
+    timeout=60.0,  # 60秒超时
+    http_client=http_client
+)
+
+# Cherry Studio 客户端
+_cherry_client = None
+if CHERRY_API_URL and CHERRY_API_KEY:
+    _cherry_client = AsyncOpenAI(
+        base_url=CHERRY_API_URL,
+        api_key=CHERRY_API_KEY,
+        max_retries=0,
+        timeout=60.0,
+        http_client=http_client
+    )
 
 
 async def call_llm(
@@ -22,6 +56,7 @@ async def call_llm(
     temperature: float = 0.8,
     max_tokens: int = 4000,
     stream: bool = False,
+    api_source: str = "openrouter",  # openrouter 或 cherry
 ) -> tuple[str, int]:
     """
     调用 LLM 并返回 (content, token_count)
@@ -42,7 +77,17 @@ async def call_llm(
         {"role": "user", "content": user_prompt},
     ]
 
-    response = await _client.chat.completions.create(
+    # 根据 api_source 选择客户端
+    if api_source == "cherry" and _cherry_client:
+        client = _cherry_client
+        # Cherry Studio 模型格式为 "provider:model_id"，保持原格式
+    else:
+        client = _client
+        # OpenRouter 格式需要去掉 provider: 前缀
+        if ":" in model:
+            model = model.split(":", 1)[1]
+
+    response = await client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=temperature,
@@ -82,3 +127,27 @@ async def call_llm_stream(
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
+
+
+async def get_cherry_models() -> list:
+    """获取 Cherry Studio 可用模型列表"""
+    if not _cherry_client:
+        return []
+    try:
+        response = await _cherry_client.models.list()
+        if not response or not response.data:
+            return []
+        models = []
+        for m in response.data:
+            # 格式化为 provider:model_id
+            model_id = m.id
+            # 简化显示名称
+            name = m.name if hasattr(m, 'name') else model_id
+            models.append({
+                "value": model_id,
+                "label": name
+            })
+        return models
+    except Exception as e:
+        print(f"获取 Cherry Studio 模型失败: {e}")
+        return []

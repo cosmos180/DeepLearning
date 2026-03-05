@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+requests
+beautifulsoup4
+readability-lxml
+chromadb
+langchain
+langchain-community
+tiktoken
+python-dotenv
+httpx
+pydantic-settings
+openai
+loguru
+aiofiles

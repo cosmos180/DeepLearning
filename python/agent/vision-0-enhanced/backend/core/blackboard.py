@@ -169,6 +169,21 @@ class Blackboard:
         await self._db.execute("DELETE FROM trace_events")
         await self._db.commit()
 
+    async def publish_many(self, artifacts: dict[str, str]) -> None:
+        """
+        批量发布产出物到黑板。
+        artifacts: {artifact_type_value: content, ...}
+        用于从中间步骤启动时预置前置产出物。
+        """
+        for artifact_type_str, content in artifacts.items():
+            # 验证是否为有效的 ArtifactType
+            try:
+                artifact_type = ArtifactType(artifact_type_str)
+                await self.publish(artifact_type, content)
+            except ValueError:
+                # 忽略无效的类型
+                print(f"Warning: Unknown artifact type '{artifact_type_str}' ignored")
+
     # ─── 工作流状态管理 ───────────────────────────────────────────────────────
 
     async def set_workflow_state(self, project_id: str, status: WorkflowStatus,

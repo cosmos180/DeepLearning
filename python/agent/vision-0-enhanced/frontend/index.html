@@ -17,8 +17,7 @@
     }
 
     .glass {
-      background: rgba(255, 255, 255, 0.04);
-      backdrop-filter: blur(12px);
+      background: rgba(18, 18, 28, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
@@ -49,7 +48,7 @@
     }
 
     .log-entry {
-      animation: fadeIn 0.3s ease;
+      /* 移除动画以提升滚动性能 */
     }
 
     @keyframes fadeIn {
@@ -94,8 +93,7 @@
     }
 
     .modal-overlay {
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.85);
     }
 
     pre {
@@ -194,6 +192,51 @@
       border-radius: 3px;
     }
 
+    /* 优化滚动性能 */
+    .overflow-y-auto {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      will-change: transform;
+    }
+
+    /* 减少动画对滚动的影响 */
+    .pulse-dot {
+      will-change: opacity;
+    }
+
+    /* 流行元素标签样式 */
+    .element-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: #94a3b8;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .element-tag:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+      color: #c4b5fd;
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .element-tag.selected {
+      border-color: rgba(139, 92, 246, 0.6);
+      background: rgba(139, 92, 246, 0.25);
+      color: #e9d5ff;
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.15);
+    }
+
+    .element-category {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
   </style>
 </head>
 
@@ -224,110 +267,123 @@
 
   <div class="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
-    <!-- 项目启动面板 -->
-    <div class="glass rounded-2xl p-6" id="launch-panel">
-      <h2 class="text-lg font-semibold text-white mb-4">🎬 启动新项目</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div class="md:col-span-3">
-          <label class="block text-xs text-slate-400 mb-2">创意种子 <span class="text-purple-400">*</span></label>
-          <textarea id="seed-input" rows="3" placeholder="输入你的创意想法，例如：一个失忆的机器人在废弃城市中寻找自己的制造者，却发现真相比遗忘更残忍..."
-            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none"></textarea>
+    <!-- 入口卡片面板 -->
+    <div class="glass rounded-2xl p-6" id="entry-panel">
+      <h2 class="text-lg font-semibold text-white mb-6">选择入口</h2>
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-emerald-500/40 border border-transparent transition-all"
+          onclick="openEntryModal('creator')">
+          <div class="text-4xl mb-3">🚀</div>
+          <h3 class="font-semibold text-white">一键制片</h3>
+          <p class="text-xs text-slate-400 mt-1">全流程自动</p>
+          <p class="text-[10px] text-slate-600 mt-2">输入种子 → 成片</p>
         </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-2">目标内容类型</label>
-          <div class="relative" id="duration-dropdown">
-            <button type="button" onclick="toggleDropdown('duration')"
-              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/50 text-left flex items-center justify-between">
-              <span id="duration-selected">30分钟剧集试播集</span>
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-purple-500/40 border border-transparent transition-all"
+          onclick="openEditor('creator')">
+          <div class="text-4xl mb-3">✍️</div>
+          <h3 class="font-semibold text-white">创作</h3>
+          <p class="text-xs text-slate-400 mt-1">故事圣经</p>
+          <p class="text-[10px] text-slate-600 mt-2">进入创作工作台</p>
+        </div>
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-blue-500/40 border border-transparent transition-all"
+          onclick="openEntryModal('screenwriter')">
+          <div class="text-4xl mb-3">📝</div>
+          <h3 class="font-semibold text-white">编剧</h3>
+          <p class="text-xs text-slate-400 mt-1">撰写剧本</p>
+          <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
+        </div>
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-rose-500/40 border border-transparent transition-all"
+          onclick="openEditor('reviewer')">
+          <div class="text-4xl mb-3">🔍</div>
+          <h3 class="font-semibold text-white">剧本评审</h3>
+          <p class="text-xs text-slate-400 mt-1">临床诊断</p>
+          <p class="text-[10px] text-slate-600 mt-2">进入评审工作台</p>
+        </div>
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-pink-500/40 border border-transparent transition-all"
+          onclick="openEntryModal('art_director')">
+          <div class="text-4xl mb-3">🎨</div>
+          <h3 class="font-semibold text-white">艺术总监</h3>
+          <p class="text-xs text-slate-400 mt-1">视觉风格</p>
+          <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
+        </div>
+        <div
+          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-amber-500/40 border border-transparent transition-all"
+          onclick="openEntryModal('director')">
+          <div class="text-4xl mb-3">🎬</div>
+          <h3 class="font-semibold text-white">导演</h3>
+          <p class="text-xs text-slate-400 mt-1">分镜Prompt</p>
+          <p class="text-[10px] text-slate-600 mt-2">仅执行导演步骤</p>
+        </div>
+      </div>
+
+      <!-- 二级菜单：可观测性追踪 + 高级设置 -->
+      <div class="mt-6 pt-4 border-t border-white/10">
+        <details class="text-sm group">
+          <summary
+            class="cursor-pointer text-slate-400 font-medium hover:text-white transition-colors duration-200 outline-none flex items-center gap-2">
+            <span>📋</span>
+            <span>高级选项</span>
+            <svg class="w-4 h-4 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </summary>
+          <div class="mt-4 space-y-4">
+            <button onclick="loadAndShowTraces()"
+              class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all">
+              📊 可观测性追踪
             </button>
-            <div id="duration-options" class="absolute z-50 w-full mt-1 bg-[#1a1a2e] border border-white/10 rounded-xl overflow-hidden hidden shadow-lg">
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="3分钟竖屏微短剧">3分钟竖屏微短剧</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="5分钟概念短片">5分钟概念短片</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="15分钟电影节剧情短片">15分钟电影节剧情短片</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-white bg-purple-500/20 cursor-pointer" data-value="30分钟剧集试播集">30分钟剧集试播集</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="60分钟流媒体大电影">60分钟流媒体大电影</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="90分钟院线标准长片">90分钟院线标准长片</div>
-              <div class="dropdown-option px-4 py-2.5 text-sm text-slate-300 hover:bg-purple-500/20 hover:text-white cursor-pointer" data-value="120分钟史诗级巨制">120分钟史诗级巨制</div>
+            <!-- AI 模型高级配置 -->
+            <div class="p-4 bg-white/5 border border-white/10 rounded-xl" id="model-config-panel">
+              <h4 class="text-xs text-slate-400 mb-3 font-medium">模型配置（全局默认）</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">✍️ 原著作者</label>
+                  <input type="text" id="model-creator" placeholder="默认"
+                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                    list="model-suggestions" />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">📝 编剧</label>
+                  <input type="text" id="model-screenwriter" placeholder="默认"
+                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                    list="model-suggestions" />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">🎨 艺术总监</label>
+                  <input type="text" id="model-art_director" placeholder="默认"
+                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                    list="model-suggestions" />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">🔍 剧本评审</label>
+                  <input type="text" id="model-reviewer" placeholder="默认"
+                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                    list="model-suggestions" />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">🎬 导演</label>
+                  <input type="text" id="model-director" placeholder="默认"
+                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                    list="model-suggestions" />
+                </div>
+              </div>
+              <datalist id="model-suggestions">
+                <option value="anthropic/claude-3.5-sonnet"></option>
+                <option value="openai/gpt-4o"></option>
+                <option value="openai/gpt-4o-mini"></option>
+                <option value="meta-llama/llama-3-70b-instruct"></option>
+                <option value="google/gemini-2.5-pro"></option>
+                <option value="deepseek/deepseek-chat"></option>
+              </datalist>
             </div>
           </div>
-          <input type="hidden" id="duration-input" value="30分钟剧集试播集">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-2">风格基调</label>
-          <input id="style-input" type="text" value="科幻+温情" placeholder="例如：悬疑+黑色幽默"
-            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50" />
-        </div>
-      </div>
-
-      <!-- AI 模型高级配置 -->
-      <details class="mb-4 text-sm group">
-        <summary
-          class="cursor-pointer text-slate-400 font-medium hover:text-white transition-colors duration-200 user-select-none outline-none">
-          ⚙️ 高级模型配置（选填）
-        </summary>
-        <div
-          class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-white/5 border border-white/10 rounded-xl"
-          id="model-config-panel">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">✍️ 原著作者模型</label>
-            <input type="text" id="model-creator" placeholder="默认模型"
-              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-              list="model-suggestions" />
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">📝 编剧模型</label>
-            <input type="text" id="model-screenwriter" placeholder="默认模型"
-              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-              list="model-suggestions" />
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">🎨 艺术总监模型</label>
-            <input type="text" id="model-art_director" placeholder="默认模型"
-              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-              list="model-suggestions" />
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">🔍 剧本评审模型</label>
-            <input type="text" id="model-reviewer" placeholder="默认模型"
-              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-              list="model-suggestions" />
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">🎬 导演模型</label>
-            <input type="text" id="model-director" placeholder="默认模型"
-              class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-3 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-              list="model-suggestions" />
-          </div>
-        </div>
-        <datalist id="model-suggestions">
-          <option value="anthropic/claude-3.5-sonnet"></option>
-          <option value="openai/gpt-4o"></option>
-          <option value="openai/gpt-4o-mini"></option>
-          <option value="meta-llama/llama-3-70b-instruct"></option>
-          <option value="google/gemini-2.5-pro"></option>
-          <option value="deepseek/deepseek-chat"></option>
-        </datalist>
-      </details>
-
-      <div class="flex items-end mb-4">
-        <button onclick="startProject()" id="start-btn"
-          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm hover:from-purple-500 hover:to-blue-500 transition-all glow-purple">
-          开始创作
-        </button>
-      </div>
-
-      <!-- 快速示例 -->
-      <div class="flex flex-wrap gap-2">
-        <span class="text-xs text-slate-500">快速示例：</span>
-        <button onclick="fillExample(0)"
-          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">失忆机器人</button>
-        <button onclick="fillExample(1)"
-          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">最后的书店</button>
-        <button onclick="fillExample(2)"
-          class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">时间快递员</button>
+        </details>
       </div>
     </div>
 
@@ -339,43 +395,14 @@
       </div>
     </div>
 
-    <!-- 主内容区 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="main-content" style="display:none!important">
-
-      <!-- 左：实时日志 -->
-      <div class="lg:col-span-1">
-        <div class="glass rounded-2xl p-5 h-full">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-medium text-white text-sm">实时日志</h3>
-            <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse" style="display:none"></div>
-          </div>
-          <div id="log-container" class="space-y-2 max-h-96 overflow-y-auto pr-1">
-            <p class="text-xs text-slate-500 text-center py-4">等待项目启动...</p>
-          </div>
-        </div>
+    <!-- 最新作品记录 -->
+    <div id="latest-work-panel" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-white">最新作品</h2>
+        <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse" style="display:none"></div>
       </div>
-
-      <!-- 右：产出物面板 -->
-      <div class="lg:col-span-2">
-        <div class="glass rounded-2xl p-5">
-          <h3 class="font-medium text-white text-sm mb-4">产出物</h3>
-          <div id="artifacts-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <p class="text-xs text-slate-500 col-span-3 text-center py-4">产出物将在创作过程中陆续出现...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 可观测性面板 -->
-    <div id="observability-panel" class="hidden">
-      <div class="glass rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-medium text-white text-sm">可观测性追踪</h3>
-          <button onclick="loadTraces()" class="text-xs text-purple-400 hover:text-purple-300">刷新</button>
-        </div>
-        <div id="traces-container" class="space-y-2 max-h-64 overflow-y-auto">
-          <p class="text-xs text-slate-500 text-center py-4">暂无追踪数据</p>
-        </div>
+      <div id="latest-work-content" class="glass rounded-2xl p-5">
+        <p class="text-xs text-slate-500 text-center py-4">作品完成后将在此展示...</p>
       </div>
     </div>
 
@@ -385,10 +412,51 @@
   <div id="artifact-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
     <div class="glass rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
       <div class="flex items-center justify-between p-5 border-b border-white/10">
-        <h3 id="modal-title" class="font-semibold text-white"></h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+        <h3 id="modal-title" class="font-semibold text-white flex items-center gap-3">
+          <!-- 标题通过 JS 注入 -->
+        </h3>
+        <div class="flex items-center gap-4">
+          <button id="modal-copy-btn"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-xs border border-white/5">
+            <span>📋</span>
+            <span class="btn-text">复制全文</span>
+          </button>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+        </div>
       </div>
       <div id="modal-content" class="flex-1 overflow-y-auto p-5 markdown-content text-sm text-slate-300"></div>
+    </div>
+  </div>
+
+  <!-- 入口启动 Modal -->
+  <div id="entry-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="glass rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between p-5 border-b border-white/10">
+        <h3 id="entry-modal-title" class="font-semibold text-white">启动工作流</h3>
+        <button onclick="closeEntryModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div id="entry-modal-content" class="flex-1 overflow-y-auto p-5">
+        <!-- 动态内容 -->
+      </div>
+      <div class="p-5 border-t border-white/10">
+        <button onclick="submitEntryForm()" id="entry-submit-btn"
+          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm hover:from-purple-500 hover:to-blue-500 transition-all glow-purple">
+          开始执行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 追踪 Modal -->
+  <div id="traces-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="glass rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between p-5 border-b border-white/10">
+        <h3 class="font-semibold text-white">📊 可观测性追踪</h3>
+        <button onclick="closeTracesModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div id="traces-modal-content" class="flex-1 overflow-y-auto p-5">
+        <p class="text-xs text-slate-500 text-center py-4">加载中...</p>
+      </div>
     </div>
   </div>
 
@@ -396,11 +464,49 @@
     const API = 'http://localhost:8765';
     let eventSource = null;
     let currentArtifacts = {};
+    let currentEntryType = null;
 
     const EXAMPLES = [
       { seed: "一个失忆的机器人在废弃城市中寻找自己的制造者，却发现真相比遗忘更残忍——它的制造者正是它自己", style: "科幻+悬疑" },
       { seed: "城市最后一家实体书店的老板，在拆迁前夜收到了一封来自未来的信，信中只有一句话：不要卖掉那本红色的书", style: "魔幻现实+温情" },
       { seed: "一个专门递送'时间胶囊'的快递员，意外打开了一个寄给自己的包裹，里面是他从未寄出的道歉", style: "奇幻+治愈" },
+    ];
+
+    // 创作元素分类数据（含类型风格 + 流行元素）
+    const POPULAR_ELEMENTS = [
+      {
+        category: '🎬 类型风格',
+        group: 'genre',
+        tags: ['科幻', '悬疑', '喜剧', '都市', '古装', '奇幻', '现实主义', '温情', '惊悚', '动作', '爱情', '家庭', '犯罪', '战争', '青春', '治愈']
+      },
+      {
+        category: '🎭 身份反差',
+        tags: ['扮猪吃虎/隐藏大佬', '穷人逆袭', '豪门真假身份', '赘婿逆袭', '假千金/真少爷']
+      },
+      {
+        category: '👨‍👩‍👧 家庭关系',
+        tags: ['婆媳矛盾', '亲家冲突', '重男轻女/偏心父母', '父母为孩子拼面子', '多年误会→真相揭开']
+      },
+      {
+        category: '💥 极端情境钩子',
+        tags: ['婚礼现场打脸', '相亲反转', '葬礼/医院/法庭', '离婚协议翻盘', '当场证明身份']
+      },
+      {
+        category: '💰 阶层冲突',
+        tags: ['穷富对立', '城市vs农村', '丈母娘嫌穷', '同学会炫富', '拆迁/房产/彩礼']
+      },
+      {
+        category: '⚡ 爽点结构',
+        tags: ['被看不起→反转', '羞辱升级→隐藏实力', '群体震惊/打脸', '每3-5分钟一个反转', '双向反转']
+      },
+      {
+        category: '🔥 情绪关键词',
+        tags: ['打脸', '逆袭', '真相', '身份曝光', '后悔认错', '跪求原谅', '当场傻眼']
+      },
+      {
+        category: '📺 热门题材',
+        tags: ['中老年情感/父母尊严', '农村现实题材', '家庭伦理', '普通人尊严被踩→反转']
+      }
     ];
 
     const AGENTS = [
@@ -424,17 +530,233 @@
       style_guide: { label: '视觉风格圣经', icon: '🖼️', color: 'pink' },
     };
 
-    function fillExample(idx) {
-      const ex = EXAMPLES[idx];
-      document.getElementById('seed-input').value = ex.seed;
-      document.getElementById('style-input').value = ex.style;
+    // 入口配置：定义每个入口需要的表单字段和启动参数
+    const ENTRY_CONFIGS = {
+      creator: {
+        title: '🚀 一键制片',
+        step: null,
+        fields: [
+          { id: 'seed', label: '创意种子', type: 'textarea', required: true, placeholder: '用一句话描述你的故事创意...' },
+          { id: 'target_duration', label: '目标时长', type: 'select', required: false, default: '30分钟短片', options: ['5分钟微短剧', '15分钟短片', '30分钟短片', '45分钟剧集试播集', '90分钟电影', '120分钟电影'] },
+          { id: 'popular_elements', label: '创作元素（可选）', type: 'tags', required: false },
+        ],
+        description: '输入创意种子，AI 全自动完成：创作 → 编剧 → 评审 → 导演'
+      },
+      screenwriter: {
+        title: '📝 编剧入口',
+        step: 'parallel_dev',
+        fields: [
+          { id: 'logline', label: 'Logline', type: 'textarea', required: true, placeholder: '一句话故事梗概...' },
+          { id: 'character_sheets', label: '角色设定', type: 'textarea', required: true, placeholder: '角色详细设定...' },
+          { id: 'beat_sheet', label: '节拍表', type: 'textarea', required: true, placeholder: '故事节拍表...' },
+        ],
+        description: '跳过创作步骤，从编剧和艺术总监并行开始'
+      },
+      art_director: {
+        title: '🎨 艺术总监入口',
+        step: 'parallel_dev',
+        fields: [
+          { id: 'logline', label: 'Logline', type: 'textarea', required: true, placeholder: '一句话故事梗概...' },
+          { id: 'character_sheets', label: '角色设定', type: 'textarea', required: true, placeholder: '角色详细设定...' },
+          { id: 'beat_sheet', label: '节拍表', type: 'textarea', required: true, placeholder: '故事节拍表...' },
+        ],
+        description: '跳过创作步骤，从编剧和艺术总监并行开始'
+      },
+      director: {
+        title: '🎬 导演入口',
+        step: 'direction',
+        fields: [
+          { id: 'script', label: '剧本', type: 'textarea', required: true, placeholder: '完整剧本内容...' },
+          { id: 'character_sheets', label: '角色设定', type: 'textarea', required: false, placeholder: '角色详细设定...' },
+          { id: 'style_guide', label: '视觉风格圣经', type: 'textarea', required: false, placeholder: '视觉风格指南...' },
+        ],
+        description: '仅执行导演步骤，生成分镜和视频 Prompt'
+      }
+    };
+
+    // 打开编辑器页面
+    function openEditor(mode) {
+      window.location.href = `editor.html?mode=${mode}`;
     }
 
-    async function startProject() {
-      const seed = document.getElementById('seed-input').value.trim();
-      if (!seed) { alert('请输入创意种子！'); return; }
+    function openEntryModal(type) {
+      currentEntryType = type;
+      const config = ENTRY_CONFIGS[type];
+      if (!config) return;
 
-      const btn = document.getElementById('start-btn');
+      document.getElementById('entry-modal-title').textContent = config.title;
+
+      let formHtml = `<p class="text-xs text-slate-400 mb-4">${config.description}</p>`;
+
+      config.fields.forEach(field => {
+        const requiredMark = field.required ? '<span class="text-purple-400">*</span>' : '';
+        const defaultVal = field.default || '';
+
+        if (field.type === 'textarea') {
+          formHtml += `
+            <div class="mb-4">
+              <label class="block text-xs text-slate-400 mb-2">${field.label} ${requiredMark}</label>
+              <textarea id="entry-${field.id}" rows="4" placeholder="${field.placeholder || ''}"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none">${defaultVal}</textarea>
+            </div>`;
+        } else if (field.type === 'text') {
+          formHtml += `
+            <div class="mb-4">
+              <label class="block text-xs text-slate-400 mb-2">${field.label} ${requiredMark}</label>
+              <input type="text" id="entry-${field.id}" value="${defaultVal}" placeholder="${field.placeholder || ''}"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50" />
+            </div>`;
+        } else if (field.type === 'select') {
+          formHtml += `
+            <div class="mb-4">
+              <label class="block text-xs text-slate-400 mb-2">${field.label} ${requiredMark}</label>
+              <select id="entry-${field.id}"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500/50" style="background-color: #1a1a2e;">
+                ${field.options.map(opt => `<option value="${opt}" ${opt === defaultVal ? 'selected' : ''} style="background-color: #1a1a2e; color: #e2e8f0;">${opt}</option>`).join('')}
+              </select>
+            </div>`;
+        } else if (field.type === 'tags') {
+          formHtml += `
+            <div class="mb-4">
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-xs text-slate-400">${field.label}</label>
+                <span id="entry-tags-count" class="text-[10px] text-slate-600">已选 0 项</span>
+              </div>
+              <div class="bg-white/[0.02] border border-white/10 rounded-xl p-3 max-h-52 overflow-y-auto space-y-3" id="entry-${field.id}-container">
+                ${POPULAR_ELEMENTS.map(group => `
+                  <div>
+                    <div class="element-category">${group.category}</div>
+                    <div class="flex flex-wrap gap-1.5">
+                      ${group.tags.map(tag => `<span class="element-tag" onclick="toggleElementTag(this)" data-tag="${tag}" data-group="${group.group || 'element'}">${tag}</span>`).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>`;
+        }
+      });
+
+      // 快速示例（仅创作入口）
+      if (type === 'creator') {
+        formHtml += `
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span class="text-xs text-slate-500">快速示例：</span>
+            <button type="button" onclick="fillEntryExample(0)" class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">失忆机器人</button>
+            <button type="button" onclick="fillEntryExample(1)" class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">最后的书店</button>
+            <button type="button" onclick="fillEntryExample(2)" class="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">时间快递员</button>
+          </div>`;
+      }
+
+      document.getElementById('entry-modal-content').innerHTML = formHtml;
+      document.getElementById('entry-modal').classList.remove('hidden');
+    }
+
+    function closeEntryModal() {
+      document.getElementById('entry-modal').classList.add('hidden');
+      currentEntryType = null;
+    }
+
+    function fillEntryExample(idx) {
+      const ex = EXAMPLES[idx];
+      const seedInput = document.getElementById('entry-seed');
+      if (seedInput) seedInput.value = ex.seed;
+      // 清除之前选中的风格标签，选中示例对应的风格
+      document.querySelectorAll('.element-tag[data-group="genre"]').forEach(el => {
+        el.classList.remove('selected');
+      });
+      if (ex.style) {
+        ex.style.split('+').forEach(s => {
+          const tag = document.querySelector(`.element-tag[data-group="genre"][data-tag="${s.trim()}"]`);
+          if (tag) tag.classList.add('selected');
+        });
+      }
+      updateTagCount();
+    }
+
+    function toggleElementTag(el) {
+      el.classList.toggle('selected');
+      updateTagCount();
+    }
+
+    function updateTagCount() {
+      const selected = document.querySelectorAll('.element-tag.selected');
+      const countEl = document.getElementById('entry-tags-count');
+      if (countEl) countEl.textContent = `已选 ${selected.length} 项`;
+    }
+
+    function getSelectedElements() {
+      return Array.from(document.querySelectorAll('.element-tag.selected:not([data-group="genre"])')).map(el => el.dataset.tag);
+    }
+
+    function getSelectedGenres() {
+      return Array.from(document.querySelectorAll('.element-tag.selected[data-group="genre"]')).map(el => el.dataset.tag);
+    }
+
+    async function submitEntryForm() {
+      const config = ENTRY_CONFIGS[currentEntryType];
+      if (!config) return;
+
+      // 收集表单数据
+      const formData = {};
+      const artifacts = {};
+      let hasError = false;
+
+      config.fields.forEach(field => {
+        const el = document.getElementById(`entry-${field.id}`);
+        const value = el ? el.value.trim() : '';
+
+        if (field.required && !value) {
+          el.classList.add('border-red-500/50');
+          hasError = true;
+        } else if (el) {
+          el.classList.remove('border-red-500/50');
+        }
+
+        // 区分工作流参数和产出物
+        if (['seed', 'target_duration'].includes(field.id)) {
+          formData[field.id] = value;
+        } else if (field.type === 'tags') {
+          // tags 类型单独处理
+        } else {
+          artifacts[field.id] = value;
+        }
+      });
+
+      if (hasError) {
+        alert('请填写所有必填项！');
+        return;
+      }
+
+      // 获取全局模型配置
+      const agentModels = {};
+      ['creator', 'screenwriter', 'art_director', 'reviewer', 'director'].forEach(agent => {
+        const modelInput = document.getElementById(`model-${agent}`);
+        if (modelInput && modelInput.value.trim()) {
+          agentModels[agent] = modelInput.value.trim();
+        }
+      });
+
+      // 收集选中的流行元素
+      const popularElements = getSelectedElements();
+      // 存储到 localStorage 供编辑器使用
+      localStorage.setItem('popularElements', JSON.stringify(popularElements));
+
+      // 从类型风格标签中生成 style 字符串
+      const selectedGenres = getSelectedGenres();
+      const styleStr = selectedGenres.length > 0 ? selectedGenres.join('+') : '';
+
+      // 构建请求
+      const requestBody = {
+        seed: formData.seed || '',
+        target_duration: formData.target_duration || '30分钟剧集试播集',
+        style: styleStr,
+        popular_elements: popularElements,
+        agent_models: agentModels,
+        start_from_step: config.step,
+        artifacts: artifacts
+      };
+
+      const btn = document.getElementById('entry-submit-btn');
       btn.disabled = true;
       btn.textContent = '启动中...';
 
@@ -442,23 +764,22 @@
         const res = await fetch(`${API}/api/project/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            seed,
-            target_duration: document.getElementById('duration-input').value,
-            style: document.getElementById('style-input').value,
-          })
+          body: JSON.stringify(requestBody)
         });
         if (!res.ok) {
           const err = await res.json();
           alert(err.detail || '启动失败');
-          btn.disabled = false; btn.textContent = '开始创作';
+          btn.disabled = false;
+          btn.textContent = '开始执行';
           return;
         }
+        closeEntryModal();
         showWorkflowUI();
         connectSSE();
       } catch (e) {
         alert('连接服务器失败，请确认后端已启动');
-        btn.disabled = false; btn.textContent = '开始创作';
+        btn.disabled = false;
+        btn.textContent = '开始执行';
       }
     }
 
@@ -470,9 +791,9 @@
     }
 
     function showWorkflowUI() {
+      document.getElementById('entry-panel').classList.add('hidden');
       document.getElementById('workflow-panel').classList.remove('hidden');
-      document.getElementById('main-content').style.display = '';
-      document.getElementById('observability-panel').classList.remove('hidden');
+      document.getElementById('latest-work-panel').classList.remove('hidden');
       document.getElementById('log-pulse').style.display = 'block';
       renderAgentCards({});
     }
@@ -491,11 +812,13 @@
 
     function handleUpdate(data) {
       if (data.workflow) updateStatus(data.workflow);
-      if (data.logs) renderLogs(data.logs);
       if (data.artifacts) {
         currentArtifacts = data.artifacts;
-        renderArtifacts(data.artifacts);
         updateAgentCardsFromLogs(data.logs || []);
+        // 如果已完成，渲染最新作品
+        if (data.workflow && data.workflow.status === 'completed') {
+          renderLatestWork(data.artifacts, data.workflow);
+        }
       }
     }
 
@@ -517,10 +840,74 @@
 
       if (workflow.status === 'completed') {
         document.getElementById('log-pulse').style.display = 'none';
-        document.getElementById('start-btn').disabled = false;
-        document.getElementById('start-btn').textContent = '开始创作';
-        loadTraces();
       }
+    }
+
+    function renderLatestWork(artifacts, workflow) {
+      const container = document.getElementById('latest-work-content');
+      const entries = Object.entries(artifacts);
+      if (entries.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">暂无作品数据</p>';
+        return;
+      }
+
+      // 显示作品信息摘要
+      const seed = workflow.seed || '未知创意';
+      const style = workflow.style || '未知风格';
+      const duration = workflow.target_duration || '未知时长';
+
+      let html = `
+        <div class="mb-4 pb-4 border-b border-white/10">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-purple-400">💡</span>
+            <span class="text-sm font-medium text-white">创意种子</span>
+          </div>
+          <p class="text-xs text-slate-400">${seed}</p>
+          <div class="flex gap-4 mt-2 text-xs text-slate-500">
+            <span>📁 ${duration}</span>
+            <span>🎨 ${style}</span>
+          </div>
+        </div>
+        <div class="mb-4">
+          <h4 class="text-sm font-medium text-white mb-3">产出物清单</h4>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      `;
+
+      entries.forEach(([type, info]) => {
+        const meta = ARTIFACT_LABELS[type] || { label: type, icon: '📄', color: 'slate' };
+        const colorMap = {
+          purple: 'border-purple-500/30 hover:border-purple-500/60',
+          blue: 'border-blue-500/30 hover:border-blue-500/60',
+          indigo: 'border-indigo-500/30 hover:border-indigo-500/60',
+          violet: 'border-violet-500/30 hover:border-violet-500/60',
+          rose: 'border-rose-500/30 hover:border-rose-500/60',
+          amber: 'border-amber-500/30 hover:border-amber-500/60',
+          green: 'border-green-500/30 hover:border-green-500/60',
+          teal: 'border-teal-500/30 hover:border-teal-500/60',
+          pink: 'border-pink-500/30 hover:border-pink-500/60',
+          slate: 'border-slate-500/30 hover:border-slate-500/60',
+        };
+        const borderCls = colorMap[meta.color] || colorMap.slate;
+        const chars = info.length || 0;
+
+        html += `
+          <div class="artifact-card glass rounded-xl p-3 cursor-pointer border ${borderCls}"
+              onclick="openArtifact('${type}', '${meta.label}')">
+            <div class="text-lg mb-1">${meta.icon}</div>
+            <div class="font-medium text-xs text-white mb-1">${meta.label}</div>
+            <div class="text-[10px] text-slate-500">${chars.toLocaleString()} 字符</div>
+          </div>`;
+      });
+
+      html += `
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 text-center">
+          点击卡片查看详细内容
+        </div>
+      `;
+
+      container.innerHTML = html;
     }
 
     function renderAgentCards(agentStatuses) {
@@ -533,14 +920,21 @@
         else if (st === 'completed') { cls = 'completed'; statusText = '已完成'; dotCls = 'bg-green-400'; }
         else if (st === 'failed') { cls = ''; statusText = '失败'; dotCls = 'bg-red-400'; }
 
-        return `<div class="agent-card glass rounded-xl p-4 ${cls}">
+        const isClickable = ['creator', 'reviewer', 'screenwriter'].includes(a.id);
+        const clickableCls = isClickable ? 'cursor-pointer hover:border-purple-500/40 hover:-translate-y-1 transition-all' : '';
+        const onclickAttr = isClickable ? `onclick="openEditor('${a.id === 'screenwriter' ? 'creator' : a.id}')"` : '';
+
+        return `<div class="agent-card glass rounded-xl p-4 ${cls} ${clickableCls}" ${onclickAttr}>
       <div class="flex items-center justify-between mb-2">
         <span class="text-xl">${a.icon}</span>
         <div class="w-2 h-2 rounded-full ${dotCls}"></div>
       </div>
       <div class="font-medium text-sm text-white">${a.name}</div>
       <div class="text-xs text-slate-400 mt-1">${a.desc}</div>
-      <div class="text-xs text-slate-500 mt-2">${statusText}</div>
+      <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
+        <span>${statusText}</span>
+        ${isClickable && st === 'completed' ? '<span class="text-[10px] text-purple-400">点击进入工作台</span>' : ''}
+      </div>
     </div>`;
       }).join('');
     }
@@ -558,69 +952,6 @@
       renderAgentCards(agentStatuses);
     }
 
-    function renderLogs(logs) {
-      const container = document.getElementById('log-container');
-      if (!logs || logs.length === 0) return;
-
-      const statusIcons = {
-        thinking: '🔵', reflecting: '🟡', completed: '🟢', failed: '🔴', idle: '⚪'
-      };
-
-      container.innerHTML = logs.map(log => {
-        const icon = statusIcons[log.status] || '⚪';
-        const time = log.time ? new Date(log.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-        return `<div class="log-entry flex gap-2 text-xs">
-      <span class="flex-shrink-0 mt-0.5">${icon}</span>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="font-medium text-slate-300">${log.agent}</span>
-          <span class="text-slate-600 text-[10px]">${time}</span>
-        </div>
-        <div class="text-slate-400 mt-0.5 truncate">${log.message}</div>
-        ${log.detail ? `<div class="text-slate-600 mt-0.5 text-[10px] line-clamp-2">${log.detail}</div>` : ''}
-      </div>
-    </div>`;
-      }).join('');
-
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function renderArtifacts(artifacts) {
-      const grid = document.getElementById('artifacts-grid');
-      const entries = Object.entries(artifacts);
-      if (entries.length === 0) return;
-
-      grid.innerHTML = entries.map(([type, info]) => {
-        const meta = ARTIFACT_LABELS[type] || { label: type, icon: '📄', color: 'slate' };
-        const colorMap = {
-          purple: 'border-purple-500/30 hover:border-purple-500/60',
-          blue: 'border-blue-500/30 hover:border-blue-500/60',
-          indigo: 'border-indigo-500/30 hover:border-indigo-500/60',
-          violet: 'border-violet-500/30 hover:border-violet-500/60',
-          rose: 'border-rose-500/30 hover:border-rose-500/60',
-          amber: 'border-amber-500/30 hover:border-amber-500/60',
-          green: 'border-green-500/30 hover:border-green-500/60',
-          teal: 'border-teal-500/30 hover:border-teal-500/60',
-          pink: 'border-pink-500/30 hover:border-pink-500/60',
-          slate: 'border-slate-500/30 hover:border-slate-500/60',
-        };
-        const borderCls = colorMap[meta.color] || colorMap.slate;
-        const chars = info.length || 0;
-        const ver = info.version || 1;
-
-        return `<div class="artifact-card glass rounded-xl p-3 cursor-pointer border ${borderCls}"
-        onclick="openArtifact('${type}', '${meta.label}')">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-lg">${meta.icon}</span>
-        ${ver > 1 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">v${ver}</span>` : ''}
-      </div>
-      <div class="font-medium text-xs text-white mb-1">${meta.label}</div>
-      <div class="text-[10px] text-slate-500">${chars.toLocaleString()} 字符</div>
-      ${info.preview ? `<div class="text-[10px] text-slate-500 mt-1.5 line-clamp-2">${info.preview}</div>` : ''}
-    </div>`;
-      }).join('');
-    }
-
     async function openArtifact(type, label) {
       document.getElementById('modal-title').textContent = `${ARTIFACT_LABELS[type]?.icon || '📄'} ${label}`;
       document.getElementById('modal-content').innerHTML = '<p class="text-slate-500 text-center py-8">加载中...</p>';
@@ -631,8 +962,37 @@
         const data = await res.json();
         const html = marked.parse(data.content || '（内容为空）');
         document.getElementById('modal-content').innerHTML = html;
+
+        // 绑定复制按钮事件
+        const copyBtn = document.getElementById('modal-copy-btn');
+        copyBtn.onclick = () => copyArtifact(type, copyBtn);
       } catch (e) {
         document.getElementById('modal-content').innerHTML = '<p class="text-red-400 text-center py-8">加载失败</p>';
+      }
+    }
+
+    async function copyArtifact(type, btn) {
+      const textSpan = btn.querySelector('.btn-text') || btn;
+      const original = textSpan.textContent;
+      textSpan.textContent = '复制成功';
+      const iconSpan = btn.querySelector('span:first-child');
+      if (iconSpan) iconSpan.textContent = '✅';
+
+      try {
+        const res = await fetch(`${API}/api/artifact/${type}`);
+        const data = await res.json();
+        await navigator.clipboard.writeText(data.content || '');
+        setTimeout(() => {
+          textSpan.textContent = original;
+          if (iconSpan) iconSpan.textContent = '📋';
+        }, 1500);
+      } catch (e) {
+        textSpan.textContent = '复制失败';
+        if (iconSpan) iconSpan.textContent = '❌';
+        setTimeout(() => {
+          textSpan.textContent = original;
+          if (iconSpan) iconSpan.textContent = '📋';
+        }, 1500);
       }
     }
 
@@ -644,11 +1004,14 @@
       if (e.target === document.getElementById('artifact-modal')) closeModal();
     });
 
-    async function loadTraces() {
+    async function loadAndShowTraces() {
+      document.getElementById('traces-modal').classList.remove('hidden');
+      const container = document.getElementById('traces-modal-content');
+      container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">加载中...</p>';
+
       try {
         const res = await fetch(`${API}/api/traces`);
         const data = await res.json();
-        const container = document.getElementById('traces-container');
 
         if (!data.traces || data.traces.length === 0) {
           container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">暂无追踪数据</p>';
@@ -673,42 +1036,20 @@
         <span class="text-slate-600 truncate flex-1">${t.content?.substring(0, 80) || ''}</span>
       </div>`;
         }).join('');
-      } catch (e) { }
-    }
-
-    // 自定义下拉框
-    function toggleDropdown(id) {
-      const options = document.getElementById(`${id}-options`);
-      const allDropdowns = document.querySelectorAll('[id$="-options"]');
-      allDropdowns.forEach(d => { if (d.id !== `${id}-options`) d.classList.add('hidden'); });
-      options.classList.toggle('hidden');
-    }
-
-    document.querySelectorAll('.dropdown-option').forEach(opt => {
-      opt.addEventListener('click', function() {
-        const value = this.dataset.value;
-        const dropdown = this.closest('[id$="-dropdown"]');
-        const id = dropdown.id.replace('-dropdown', '');
-        document.getElementById(`${id}-selected`).textContent = value;
-        document.getElementById(`${id}-input`).value = value;
-
-        // 更新选中状态样式
-        this.parentElement.querySelectorAll('.dropdown-option').forEach(o => {
-          o.classList.remove('bg-purple-500/20', 'text-white');
-          o.classList.add('text-slate-300');
-        });
-        this.classList.add('bg-purple-500/20', 'text-white');
-        this.classList.remove('text-slate-300');
-
-        this.parentElement.classList.add('hidden');
-      });
-    });
-
-    // 点击外部关闭下拉框
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('[id$="-dropdown"]')) {
-        document.querySelectorAll('[id$="-options"]').forEach(d => d.classList.add('hidden'));
+      } catch (e) {
+        container.innerHTML = '<p class="text-red-400 text-center py-4">加载失败</p>';
       }
+    }
+
+    function closeTracesModal() {
+      document.getElementById('traces-modal').classList.add('hidden');
+    }
+
+    // 点击外部关闭模态框
+    // 入口 modal 仅通过关闭按钮关闭，不响应点击外部
+
+    document.getElementById('traces-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('traces-modal')) closeTracesModal();
     });
 
     // 页面加载时检查状态
@@ -720,7 +1061,6 @@
           showWorkflowUI();
           handleUpdate(data);
           if (data.workflow.status === 'running') connectSSE();
-          if (data.workflow.status === 'completed') loadTraces();
         }
       } catch (e) { }
     });

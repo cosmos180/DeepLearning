@@ -45,9 +45,12 @@ class ArtDirectorAgent(BaseAgent):
 [列出5-8条本片绝对不能出现的视觉元素或风格]
 
 ## 统一风格标签（用于 Video Prompt）
-[给出5-8个英文风格标签，所有 Video Prompt 必须包含这些标签]"""
+[给出5-8个风格标签，所有 Video Prompt 必须包含这些标签，使用中文]"""
 
     async def build_user_prompt(self) -> str:
+        # 新增强制中文约束
+        constraint = "【重要提示】请确保所有输出内容严格使用中文（包括所有标题、标签和术语）。"
+
         logline = await self.bb.read(ArtifactType.LOGLINE) or ""
         characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or ""
         beat_sheet = await self.bb.read(ArtifactType.BEAT_SHEET) or ""
@@ -63,6 +66,7 @@ class ArtDirectorAgent(BaseAgent):
 ## 故事节拍（了解情绪走向）
 {beat_sheet[:600]}
 
+{constraint}
 请严格按照系统提示中的格式输出 STYLE_GUIDE 部分。"""
 
     async def parse_and_publish(self, raw_output: str) -> None:

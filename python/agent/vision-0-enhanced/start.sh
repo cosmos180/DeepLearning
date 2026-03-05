@@ -27,15 +27,30 @@ if [ -z "$OPENAI_API_KEY" ]; then
   exit 1
 fi
 
+PORT=8765
+
 echo ""
 echo "✅ 环境变量已加载"
-echo "🚀 启动后端服务 (端口 8765)..."
+
+# 检查端口是否被占用，如果是则终止旧进程
+EXISTING_PID=$(lsof -ti :$PORT 2>/dev/null || true)
+if [ -n "$EXISTING_PID" ]; then
+  echo "⚠️  端口 $PORT 已被占用 (PID: $EXISTING_PID)，正在终止旧进程..."
+  kill $EXISTING_PID 2>/dev/null
+  sleep 1
+  # 如果还没退出，强制终止
+  kill -9 $EXISTING_PID 2>/dev/null || true
+  sleep 0.5
+  echo "✅ 旧进程已终止"
+fi
+
+echo "🚀 启动后端服务 (端口 $PORT)..."
 echo ""
 
 # 启动 FastAPI 后端
 python3 -m uvicorn backend.api.main:app \
   --host 0.0.0.0 \
-  --port 8765 \
+  --port $PORT \
   --reload \
   --log-level info &
 
@@ -49,8 +64,8 @@ echo ""
 echo "======================================"
 echo "  服务已启动！"
 echo "  前端界面: 用浏览器打开 frontend/index.html"
-echo "  后端 API: http://localhost:8765"
-echo "  API 文档: http://localhost:8765/docs"
+echo "  后端 API: http://localhost:$PORT"
+echo "  API 文档: http://localhost:$PORT/docs"
 echo "======================================"
 echo ""
 echo "按 Ctrl+C 停止服务"

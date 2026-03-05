@@ -31,7 +31,7 @@ STATIC(静止) | PAN(水平摇) | TILT(垂直摇) | DOLLY IN/OUT(推拉轨) | TR
 
 ## Video Prompt 格式
 [主体描述] + [动作/状态] + [环境/背景] + [镜头语言] + [光影氛围] + [风格标签]
-- 全部用**英文**编写
+- 全部用**中文**编写
 - 第一句必须描述主体外形（从 character_sheets 调取）
 - 具体胜过抽象
 - 末尾加统一风格标签
@@ -47,16 +47,18 @@ STATIC(静止) | PAN(水平摇) | TILT(垂直摇) | DOLLY IN/OUT(推拉轨) | TR
 ]
 
 ## VIDEO_PROMPTS
-[为每个镜头编写英文 Prompt，格式：
+[为每个镜头编写中文 Prompt，格式：
 ### Shot S01-S01
 **Prompt:** ...
-**Negative Prompt:** blurry, low quality, text, watermark
+**Negative Prompt:** 模糊的, 低画质, 文字, 水印
 ]
 
 ## DIRECTOR_NOTES
 [视觉风格定调、关键场景镜头意图、节奏控制策略]"""
 
     async def build_user_prompt(self) -> str:
+        # 新增强制中文约束
+        constraint = "【重要提示】请确保所有输出内容（包括所有标题、标签、术语和 Prompt 内容本身）严格且完全使用中文。"
         script = await self.bb.read(ArtifactType.SCRIPT) or ""
         characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or ""
 
@@ -65,16 +67,16 @@ STATIC(静止) | PAN(水平摇) | TILT(垂直摇) | DOLLY IN/OUT(推拉轨) | TR
 ## 角色视觉特征（用于 Prompt 一致性）
 {characters[:1000]}
 
-## 剧本
 {script[:3000]}
 
+{constraint}
 请严格按照系统提示中的格式输出三个部分：SHOT_LIST、VIDEO_PROMPTS、DIRECTOR_NOTES。"""
 
     def reflection_criteria(self) -> str:
         return """分镜清单应满足：
 1. 每个场景至少有3个镜头
 2. 每个镜头包含景别、角度、运动、内容描述
-3. Video Prompt 全部用英文，包含主体描述、环境、镜头语言、风格标签
+3. Video Prompt 全部用中文，包含主体描述、环境、镜头语言、风格标签
 4. Director Notes 包含视觉风格定调"""
 
     async def parse_and_publish(self, raw_output: str) -> None:

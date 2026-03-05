@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>创作工作台 - Vision-0 Enhanced</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0f;
+      color: #e2e8f0;
+    }
+
+    .glass {
+      background: rgba(18, 18, 28, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .editor-line {
+      position: relative;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+
+    .editor-line:hover {
+      background: rgba(139, 92, 246, 0.08);
+    }
+
+    .editor-line:hover .line-actions {
+      opacity: 1;
+    }
+
+    .line-actions {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .section-item {
+      transition: all 0.2s ease;
+    }
+
+    .section-item:hover {
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .section-item.active {
+      background: rgba(139, 92, 246, 0.2);
+      border-left: 3px solid #8b5cf6;
+    }
+
+    .ai-message {
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .typing-indicator span {
+      animation: blink 1.4s infinite both;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes blink {
+
+      0%,
+      80%,
+      100% {
+        opacity: 0;
+      }
+
+      40% {
+        opacity: 1;
+      }
+    }
+
+    .modal-overlay {
+      background: rgba(0, 0, 0, 0.85);
+    }
+
+    /* Markdown 样式 */
+    .markdown-content h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      margin: 1em 0 0.5em;
+      color: #c4b5fd;
+    }
+
+    .markdown-content h2 {
+      font-size: 1.2em;
+      font-weight: 600;
+      margin: 0.8em 0 0.4em;
+      color: #a78bfa;
+    }
+
+    .markdown-content h3 {
+      font-size: 1.05em;
+      font-weight: 600;
+      margin: 0.6em 0 0.3em;
+      color: #8b5cf6;
+    }
+
+    .markdown-content p {
+      margin: 0.4em 0;
+      line-height: 1.7;
+    }
+
+    .markdown-content strong {
+      color: #c4b5fd;
+    }
+
+    .markdown-content code {
+      background: rgba(139, 92, 246, 0.15);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .markdown-content pre {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      margin: 0.8em 0;
+    }
+
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8em 0;
+      font-size: 0.9em;
+    }
+
+    .markdown-content th,
+    .markdown-content td {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .markdown-content th {
+      background: rgba(139, 92, 246, 0.15);
+      color: #c4b5fd;
+      font-weight: 600;
+    }
+
+    .markdown-content tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .markdown-content ul,
+    .markdown-content ol {
+      padding-left: 1.5em;
+      margin: 0.4em 0;
+    }
+
+    .markdown-content li {
+      margin: 0.2em 0;
+      line-height: 1.7;
+    }
+
+    .markdown-content blockquote {
+      border-left: 3px solid #8b5cf6;
+      padding: 0.5em 1em;
+      margin: 0.6em 0;
+      background: rgba(139, 92, 246, 0.06);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .markdown-content hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 1.2em 0;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.4);
+      border-radius: 3px;
+    }
+
+    .diff-old {
+      background: rgba(239, 68, 68, 0.2);
+      text-decoration: line-through;
+    }
+
+    .diff-new {
+      background: rgba(34, 197, 94, 0.2);
+    }
+
+    /* 剧本专业显示样式 */
+    .screenplay-view {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #d1d5db;
+    }
+
+    .screenplay-view .scene-heading {
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #c4b5fd;
+      margin-top: 1.2em;
+      margin-bottom: 0.3em;
+    }
+
+    .screenplay-view .character-name {
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #93c5fd;
+      margin-top: 0.8em;
+      margin-bottom: 0;
+      padding-left: 25%;
+    }
+
+    .screenplay-view .dialogue {
+      padding-left: 15%;
+      padding-right: 15%;
+      margin-bottom: 0.2em;
+    }
+
+    .screenplay-view .parenthetical {
+      padding-left: 22%;
+      padding-right: 22%;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .screenplay-view .action {
+      margin-top: 0.4em;
+      margin-bottom: 0.4em;
+    }
+
+    .screenplay-view .transition-line {
+      text-align: right;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-top: 0.8em;
+    }
+
+    .screenplay-line {
+      padding: 1px 0;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .screenplay-line:hover {
+      background: rgba(139, 92, 246, 0.08);
+    }
+
+    /* 侧边栏布局核心修复 */
+    #ai-sidebar {
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #ai-chat {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      /* 必须设置 min-height: 0 才能在 flex 容器中正确收缩 */
+    }
+
+    .ai-input-container {
+      flex-shrink: 0;
+      background: rgba(18, 18, 28, 0.95);
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="glass border-b border-white/10 sticky top-0 z-40">
+    <div class="px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <button onclick="goBack()" class="text-slate-400 hover:text-white transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        </button>
+        <div>
+          <h1 id="page-title" class="font-semibold text-white">创作工作台</h1>
+          <p id="page-subtitle" class="text-xs text-slate-400">科幻短片 · 30分钟</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="save-status" class="text-xs text-slate-500">自动保存已开启</div>
+        <button onclick="showVersionHistory()"
+          class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+          📜 版本历史
+        </button>
+        <button onclick="exportDocument()"
+          class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+          📤 导出
+        </button>
+        <button onclick="submitToNext()" id="submit-btn"
+          class="px-4 py-1.5 rounded-lg text-xs bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium hover:from-purple-500 hover:to-blue-500 transition-all">
+          提交到下一阶段
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex min-h-0">
+
+    <!-- Left Sidebar: Section Navigation -->
+    <aside class="w-64 glass border-r border-white/10 flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-white/10">
+        <h2 class="text-sm font-medium text-white mb-1">章节导航</h2>
+        <p class="text-xs text-slate-500">点击跳转，双击重命名</p>
+      </div>
+      <div id="section-nav" class="flex-1 overflow-y-auto p-2 space-y-1">
+        <!-- 动态生成 -->
+      </div>
+      <!-- 评审模式：导入剧本 -->
+      <div id="script-import-panel" class="hidden border-t border-white/10">
+        <details id="script-import-details" class="group">
+          <summary
+            class="cursor-pointer p-3 text-xs text-slate-400 font-medium hover:text-white transition-colors flex items-center gap-2">
+            <span>📥</span>
+            <span id="import-summary-text">导入待评审剧本</span>
+            <svg class="w-3 h-3 ml-auto transform group-open:rotate-180 transition-transform" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </summary>
+          <div class="px-3 pb-3">
+            <textarea id="script-import-input" rows="8" placeholder="在此粘贴你的剧本内容..."
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none"
+              oninput="onScriptImportChange()"></textarea>
+            <div class="flex items-center justify-between mt-2">
+              <span id="script-char-count" class="text-[10px] text-slate-600">0 字符</span>
+              <button onclick="clearScriptImport()"
+                class="text-[10px] text-slate-500 hover:text-red-400 transition-colors">清空</button>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="p-3 border-t border-white/10 flex-shrink-0">
+        <button onclick="generateAll()" id="generate-all-btn"
+          class="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all flex items-center justify-center gap-2">
+          <span>✨</span>
+          <span>生成全部内容</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Center: Editor Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <div id="editor-container" class="flex-1 overflow-y-auto p-6">
+        <!-- 动态生成编辑内容 -->
+        <div id="editor-placeholder" class="h-full flex flex-col items-center justify-center text-slate-500">
+          <div class="text-6xl mb-4">📝</div>
+          <p class="text-lg mb-2">等待生成内容</p>
+          <p class="text-sm">点击左侧"生成全部内容"或逐个章节生成</p>
+        </div>
+      </div>
+
+      <!-- Bottom Toolbar -->
+      <div class="glass border-t border-white/10 px-6 py-2 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button onclick="undo()" class="text-slate-400 hover:text-white text-sm flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+            </svg>
+            撤销
+          </button>
+          <button onclick="redo()" class="text-slate-400 hover:text-white text-sm flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path>
+            </svg>
+            重做
+          </button>
+        </div>
+        <div id="word-count" class="text-xs text-slate-500">0 字符</div>
+      </div>
+    </main>
+
+    <!-- Resize Handle -->
+    <div id="resize-handle"
+      class="w-1 bg-transparent hover:bg-purple-500/50 cursor-col-resize flex-shrink-0 transition-colors"></div>
+
+    <!-- Right Sidebar: AI Assistant -->
+    <aside id="ai-sidebar" class="w-80 glass border-l border-white/10" style="width: var(--ai-sidebar-width, 320px);">
+      <div class="p-4 border-b border-white/10 flex-shrink-0">
+        <h2 class="text-sm font-medium text-white mb-1">🤖 AI 助手</h2>
+        <p class="text-xs text-slate-500">选中文字后可请求优化</p>
+
+        <!-- API 来源选择 -->
+        <div class="mt-3">
+          <select id="api-source" onchange="onApiSourceChange()"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50">
+            <option value="openrouter">🌐 OpenRouter (含 Gemini/Claude/GPT)</option>
+            <option value="cherry">🍒 Cherry Studio (本地模型)</option>
+          </select>
+        </div>
+
+        <!-- 模型选择 -->
+        <div class="mt-2">
+          <select id="model-select" onchange="onModelChange()"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50">
+          </select>
+        </div>
+      </div>
+
+      <!-- AI Chat Area -->
+      <div id="ai-chat" class="p-4 space-y-3">
+        <div class="ai-message">
+          <div class="text-xs text-purple-400 mb-1">AI 助手 <span id="current-model-badge"
+              class="text-[10px] ml-1 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300"></span></div>
+          <div class="text-sm text-slate-300 bg-white/5 rounded-lg p-3" style="white-space: pre-wrap;">
+            您好！我是您的创作助手。您可以：
+            <ul class="mt-2 space-y-1 text-xs text-slate-400">
+              <li>• 点击"生成全部内容"自动创作</li>
+              <li>• 在编辑区选中文字，点击"AI优化"</li>
+              <li>• 在下方输入指令与我对话</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="ai-input-container p-3 border-t border-white/10">
+        <div class="flex items-end gap-2">
+          <textarea id="ai-input" rows="1" placeholder="输入指令，如：优化这段话..."
+            class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 resize-none overflow-hidden"
+            onkeydown="handleAiInputKeydown(event)"
+            oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+          <button onclick="sendAiMessage()"
+            class="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-all flex-shrink-0 mb-[1px]">
+            发送
+          </button>
+        </div>
+        <div class="flex gap-2 mt-2">
+          <button onclick="requestAiSuggestion()"
+            class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 text-xs transition-all">
+            💡 智能建议
+          </button>
+          <button onclick="adjustStyle('concise')"
+            class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 text-xs transition-all">
+            ✂️ 更简洁
+          </button>
+          <button onclick="adjustStyle('vivid')"
+            class="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 text-xs transition-all">
+            🎨 更生动
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- AI Optimization Modal -->
+  <div id="ai-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="glass rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between p-4 border-b border-white/10">
+        <h3 class="font-semibold text-white">🤖 AI 优化建议</h3>
+        <button onclick="closeAiModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div>
+          <div class="text-xs text-slate-500 mb-2">原文：</div>
+          <div id="ai-modal-original" class="text-sm text-slate-400 bg-red-500/10 rounded-lg p-3"></div>
+        </div>
+        <div>
+          <div class="text-xs text-slate-500 mb-2">优化后：</div>
+          <div id="ai-modal-optimized" class="text-sm text-slate-300 bg-green-500/10 rounded-lg p-3"></div>
+        </div>
+      </div>
+      <div class="p-4 border-t border-white/10 flex gap-3">
+        <button onclick="closeAiModal()"
+          class="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all">
+          拒绝
+        </button>
+        <button onclick="regenerateAiSuggestion()"
+          class="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all">
+          🔄 重新生成
+        </button>
+        <button onclick="acceptAiSuggestion()"
+          class="flex-1 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm transition-all">
+          ✓ 接受替换
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Version History Modal -->
+  <div id="version-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+    <div class="glass rounded-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between p-4 border-b border-white/10">
+        <h3 class="font-semibold text-white">📜 版本历史</h3>
+        <button onclick="closeVersionModal()" class="text-slate-400 hover:text-white text-xl leading-none">×</button>
+      </div>
+      <div id="version-list" class="flex-1 overflow-y-auto p-4">
+        <p class="text-xs text-slate-500 text-center py-4">加载中...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8765';
+
+    // 页面状态
+    let currentMode = 'creator'; // 'creator' or 'reviewer'
+    let currentApiSource = localStorage.getItem('apiSource') || 'openrouter';
+    let currentModel = localStorage.getItem('selectedModel') || 'deepseek/deepseek-v3.2';
+
+    // API 来源对应的模型列表
+    const MODEL_LISTS = {
+      openrouter: [
+        { value: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2 (推荐)' },
+        { value: 'openai/gpt-5.3-chat', label: 'OpenAI GPT-5.3' },
+        { value: 'google/gemini-3.1-flash-lite-preview', label: 'Google Gemini Flash' },
+        { value: 'anthropic/claude-opus-4.6', label: 'Anthropic Claude Opus' },
+        { value: 'qwen/qwen3.5-flash-02-23', label: 'Qwen 3.5 Flash' },
+        { value: 'bytedance-seed/seed-2.0-mini', label: 'ByteDance Seed Mini' },
+        { value: 'minimax/minimax-m2.5', label: 'MiniMax M2.5' },
+        { value: 'z-ai/glm-5', label: 'Z-ai GLM-5' },
+      ],
+      cherry: [
+        { value: 'deepseek:deepseek-chat', label: 'DeepSeek Chat' },
+        { value: 'deepseek:deepseek-reasoner', label: 'DeepSeek Reasoner' },
+        { value: 'moonshot:kimi-latest', label: 'Moonshot Kimi' },
+        { value: 'moonshot:kimi-k2.5', label: 'Moonshot Kimi K2.5' },
+        { value: 'zhipu:glm-4.7', label: 'GLM-4.7' },
+        { value: 'zhipu:glm-4.6v-flash', label: 'GLM-4.6V Flash' },
+        { value: 'minimax:MiniMax-M2.5', label: 'MiniMax M2.5' },
+        { value: 'doubao:doubao-seed-1-6-flash-250615', label: 'Doubao Seed Flash' },
+        { value: 'openrouter:google/gemini-3-flash-preview', label: 'Gemini 3 Flash (OR)' },
+        { value: 'openrouter:x-ai/grok-4', label: 'xAI Grok 4 (OR)' },
+      ]
+    };
+
+    // 模型名称映射
+    const MODEL_NAMES = {
+      'deepseek/deepseek-v3.2': 'DeepSeek',
+      'openai/gpt-5.3-chat': 'GPT-5.3',
+      'google/gemini-3.1-flash-lite-preview': 'Gemini Flash',
+      'anthropic/claude-opus-4.6': 'Claude Opus',
+      'qwen/qwen3.5-flash-02-23': 'Qwen',
+      'bytedance-seed/seed-2.0-mini': 'Seed',
+      'minimax/minimax-m2.5': 'MiniMax',
+      'z-ai/glm-5': 'GLM-5',
+      'deepseek:deepseek-chat': 'DeepSeek',
+      'deepseek:deepseek-reasoner': 'DeepSeek Reasoner',
+      'moonshot:kimi-latest': 'Kimi',
+      'moonshot:kimi-k2.5': 'Kimi K2.5',
+      'zhipu:glm-4.7': 'GLM-4.7',
+      'zhipu:glm-4.6v-flash': 'GLM-4.6V',
+      'minimax:MiniMax-M2.5': 'MiniMax',
+      'doubao:doubao-seed-1-6-flash-250615': 'Doubao',
+      'openrouter:google/gemini-3-flash-preview': 'Gemini',
+      'openrouter:x-ai/grok-4': 'Grok',
+    };
+    let currentProject = null;
+    let sections = [];
+    let activeSectionId = null;
+    let undoStack = [];
+    let redoStack = [];
+    let selectedText = '';
+    let selectedLineId = null;
+    let autoSaveTimer = null;
+    let scriptForReview = '';
+    let viewMode = 'rendered'; // 'edit' or 'rendered'
+
+    // 章节配置
+    const SECTION_CONFIGS = {
+      creator: [
+        { id: 'logline', title: '💡 Logline', desc: '一句话梗概', type: 'logline' },
+        { id: 'characters', title: '👥 角色设定', desc: '主要角色档案', type: 'character_sheets' },
+        { id: 'beats', title: '📋 节拍表', desc: '故事结构节拍', type: 'beat_sheet' },
+      ],
+      reviewer: [
+        { id: 'script_source', title: '📄 原始剧本', desc: '待评审剧本内容', type: 'script_source', isSource: true },
+        { id: 'overview', title: '📊 总体评价', desc: '综合评分与建议', type: 'review_overview' },
+        { id: 'structure', title: '🏗️ 结构分析', desc: '故事结构问题', type: 'review_structure' },
+        { id: 'characters', title: '👥 角色分析', desc: '角色塑造问题', type: 'review_characters' },
+        { id: 'dialogue', title: '💬 对白分析', desc: '对白写作问题', type: 'review_dialogue' },
+        { id: 'causal_chain', title: '🔗 因果链分析', desc: '伏笔/角色状态/逻辑连贯', type: 'review_causal_chain' },
+        { id: 'market', title: '💰 市场潜力分析', desc: '商业可行性/制片人视角', type: 'review_market' },
+        { id: 'summary', title: '📝 修改建议', desc: '综合修改清单', type: 'review_summary' },
+      ]
+    };
+
+    // 初始化页面
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      currentMode = params.get('mode') || 'creator';
+
+      // 初始化 API 来源和模型列表
+      document.getElementById('api-source').value = currentApiSource;
+      await updateModelList();
+
+      // 如果没有选中模型，使用第一个
+      if (!currentModel) {
+        const models = MODEL_LISTS[currentApiSource];
+        if (models && models.length > 0) {
+          currentModel = models[0].value;
+        }
+      }
+      document.getElementById('model-select').value = currentModel;
+      updateModelBadge();
+
+      // 更新页面标题
+      if (currentMode === 'creator') {
+        document.getElementById('page-title').textContent = '创作工作台';
+        document.title = '创作工作台 - Vision-0 Enhanced';
+      } else {
+        document.getElementById('page-title').textContent = '评审工作台';
+        document.title = '评审工作台 - Vision-0 Enhanced';
+        // 显示剧本导入面板
+        document.getElementById('script-import-panel').classList.remove('hidden');
+      }
+
+      // 初始化章节
+      sections = SECTION_CONFIGS[currentMode].map(cfg => ({
+        ...cfg,
+        content: '',
+        status: 'pending', // pending, generating, done, editing
+        blocks: []
+      }));
+
+      renderSectionNav();
+      checkExistingProject();
+    }
+
+    function renderSectionNav() {
+      const nav = document.getElementById('section-nav');
+      nav.innerHTML = sections.map(s => {
+        const statusIcon = {
+          pending: '⏳',
+          generating: '⏳',
+          done: '✅',
+          editing: '✏️'
+        }[s.status];
+
+        return `
+          <div class="section-item rounded-lg p-3 cursor-pointer ${s.id === activeSectionId ? 'active' : ''}"
+               onclick="selectSection('${s.id}')">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-white">${s.title}</span>
+              <span class="text-xs">${statusIcon}</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">${s.desc}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectSection(sectionId) {
+      activeSectionId = sectionId;
+      renderSectionNav();
+      renderEditor();
+    }
+
+    function renderEditor() {
+      const section = sections.find(s => s.id === activeSectionId);
+      const placeholder = document.getElementById('editor-placeholder');
+      if (!section) {
+        if (placeholder) placeholder.style.display = 'flex';
+        return;
+      }
+
+      if (placeholder) placeholder.style.display = 'none';
+      const container = document.getElementById('editor-container');
+
+      if (!section.content) {
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-500">
+            <div class="text-4xl mb-4">${section.title}</div>
+            <p class="text-sm mb-4">此章节尚未生成内容</p>
+            <button onclick="generateSection('${section.id}')"
+              class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-all">
+              ✨ 生成此章节
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // 原始剧本：支持剧本排版/编辑切换
+      if (section.isSource) {
+        const srcToggle = `
+          <div class="flex items-center gap-1 ml-auto">
+            <button onclick="switchViewMode('rendered')" class="px-2.5 py-1 rounded text-xs transition-all ${viewMode === 'rendered' ? 'bg-purple-600/30 text-purple-300 border border-purple-500/30' : 'text-slate-500 hover:text-white hover:bg-white/10'}">
+              📰 渲染
+            </button>
+            <button onclick="switchViewMode('edit')" class="px-2.5 py-1 rounded text-xs transition-all ${viewMode === 'edit' ? 'bg-purple-600/30 text-purple-300 border border-purple-500/30' : 'text-slate-500 hover:text-white hover:bg-white/10'}">
+              ✏️ 编辑
+            </button>
+          </div>
+        `;
+        if (viewMode === 'rendered') {
+          container.innerHTML = `
+            <div class="max-w-3xl mx-auto">
+              <div class="mb-4 flex items-start">
+                <div class="flex-1">
+                  <h2 class="text-xl font-semibold text-white mb-1">${section.title}</h2>
+                  <p class="text-sm text-slate-400">${section.desc}</p>
+                </div>
+                ${srcToggle}
+              </div>
+              <div class="screenplay-view bg-white/[0.02] border border-white/5 rounded-xl p-6" id="editor-lines">
+                ${renderScreenplay(section.content)}
+              </div>
+            </div>
+          `;
+        } else {
+          const lines = section.content.split('\n');
+          container.innerHTML = `
+            <div class="max-w-3xl mx-auto">
+              <div class="mb-4 flex items-start">
+                <div class="flex-1">
+                  <h2 class="text-xl font-semibold text-white mb-1">${section.title}</h2>
+                  <p class="text-sm text-slate-400">${section.desc}</p>
+                </div>
+                ${srcToggle}
+              </div>
+              <div class="space-y-1" id="editor-lines">
+                ${lines.map((line, idx) => renderLine(line, idx)).join('')}
+              </div>
+            </div>
+          `;
+        }
+        updateWordCount();
+        return;
+      }
+
+      // 渲染内容区
+      const toggleBtns = `
+        <div class="flex items-center gap-1 ml-auto">
+          <button onclick="switchViewMode('rendered')" class="px-2.5 py-1 rounded text-xs transition-all ${viewMode === 'rendered' ? 'bg-purple-600/30 text-purple-300 border border-purple-500/30' : 'text-slate-500 hover:text-white hover:bg-white/10'}">
+            📰 渲染
+          </button>
+          <button onclick="switchViewMode('edit')" class="px-2.5 py-1 rounded text-xs transition-all ${viewMode === 'edit' ? 'bg-purple-600/30 text-purple-300 border border-purple-500/30' : 'text-slate-500 hover:text-white hover:bg-white/10'}">
+            ✏️ 编辑
+          </button>
+        </div>
+      `;
+
+      if (viewMode === 'rendered') {
+        // Markdown 渲染视图
+        const rendered = marked.parse(section.content);
+        container.innerHTML = `
+          <div class="max-w-3xl mx-auto">
+            <div class="mb-6 flex items-start">
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-white mb-2">${section.title}</h2>
+                <p class="text-sm text-slate-400">${section.desc}</p>
+              </div>
+              ${toggleBtns}
+            </div>
+            <div class="markdown-content text-sm text-slate-300 bg-white/[0.02] border border-white/5 rounded-xl p-6" id="editor-lines">
+              ${rendered}
+            </div>
+          </div>
+        `;
+      } else {
+        // 原始编辑视图
+        const lines = section.content.split('\n');
+        container.innerHTML = `
+          <div class="max-w-3xl mx-auto">
+            <div class="mb-6 flex items-start">
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-white mb-2">${section.title}</h2>
+                <p class="text-sm text-slate-400">${section.desc}</p>
+              </div>
+              ${toggleBtns}
+            </div>
+            <div class="space-y-1" id="editor-lines">
+              ${lines.map((line, idx) => renderLine(line, idx)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      updateWordCount();
+    }
+
+    function switchViewMode(mode) {
+      viewMode = mode;
+      renderEditor();
+    }
+
+    function renderLine(line, idx) {
+      const lineId = `line-${idx}`;
+      const isEmpty = line.trim() === '';
+      const displayContent = isEmpty ? '&nbsp;' : escapeHtml(line);
+
+      return `
+        <div class="editor-line group" id="${lineId}" data-idx="${idx}">
+          <div class="flex items-start gap-3">
+            <span class="text-xs text-slate-600 w-6 text-right flex-shrink-0 pt-1">${idx + 1}</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">${displayContent}</div>
+            </div>
+            <div class="line-actions flex items-center gap-1 flex-shrink-0">
+              <button onclick="editLine(${idx})" class="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-white" title="编辑">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+              </button>
+              <button onclick="aiOptimizeLine(${idx})" class="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-purple-400" title="AI优化">
+                🤖
+              </button>
+              <button onclick="deleteLine(${idx})" class="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-red-400" title="删除">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 剧本专业排版渲染器
+    function renderScreenplay(content) {
+      if (!content) return '<div class="text-slate-500 text-center py-8">请在左侧「📥 导入待评审剧本」中粘贴剧本内容</div>';
+      const lines = content.split('\n');
+      let html = '';
+      let inDialogue = false; // 追踪是否在对白区域
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        const escaped = escapeHtml(trimmed);
+
+        if (!trimmed) {
+          html += '<div class="screenplay-line" style="height:0.6em"></div>';
+          inDialogue = false;
+          continue;
+        }
+
+        // 场景标题: INT./EXT. 或中文 内景/外景
+        if (/^(INT\.|EXT\.|INT\/EXT\.|内景|外景|内\/外|场景)[\s.：:—–\-]/i.test(trimmed) ||
+          /^第.+[场幕景]/.test(trimmed)) {
+          html += `<div class="screenplay-line scene-heading">${escaped}</div>`;
+          inDialogue = false;
+          continue;
+        }
+
+        // 转场: CUT TO / FADE / 切至 / 转场 等
+        if (/^(CUT TO|FADE (IN|OUT|TO)|DISSOLVE|SMASH CUT|切至|转场|淡入|淡出)[：:.]*/i.test(trimmed) ||
+          /^(CUT TO|FADE OUT|FADE IN|DISSOLVE):?\s*$/i.test(trimmed)) {
+          html += `<div class="screenplay-line transition-line">${escaped}</div>`;
+          inDialogue = false;
+          continue;
+        }
+
+        // 括号注释 (parenthetical): (温柔地) (沉默)
+        if (/^[\(（].*[\)）]$/.test(trimmed)) {
+          html += `<div class="screenplay-line parenthetical">${escaped}</div>`;
+          continue;
+        }
+
+        // 角色名: 全大写或以「：」「:」结尾的短行（通常 ≤ 20 字）
+        if ((trimmed === trimmed.toUpperCase() && /^[A-Z\s]+$/.test(trimmed) && trimmed.length <= 30) ||
+          (/^[\u4e00-\u9fff\w]{1,10}[：:]$/.test(trimmed)) ||
+          (/^[\u4e00-\u9fff\w]{1,10}[\(（]/.test(trimmed) && trimmed.length <= 20)) {
+          html += `<div class="screenplay-line character-name">${escaped}</div>`;
+          inDialogue = true;
+          continue;
+        }
+
+        // 如果前一行是角色名且当前行较短，视为对白
+        if (inDialogue) {
+          html += `<div class="screenplay-line dialogue">${escaped}</div>`;
+          continue;
+        }
+
+        // 默认: 动作/描写行
+        html += `<div class="screenplay-line action">${escaped}</div>`;
+      }
+      return html;
+    }
+
+    // 编辑行
+    function editLine(idx) {
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section) return;
+
+      const lines = section.content.split('\n');
+      const line = lines[idx];
+      const lineEl = document.getElementById(`line-${idx}`);
+
+      // 保存到撤销栈
+      pushUndo();
+
+      // 替换为输入框
+      lineEl.innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-xs text-slate-600 w-6 text-right flex-shrink-0 pt-1">${idx + 1}</span>
+          <div class="flex-1 min-w-0">
+            <textarea id="edit-input" rows="2"
+              class="w-full bg-white/5 border border-purple-500/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none resize-none"
+              onkeydown="handleEditKeydown(event, ${idx})">${escapeHtml(line)}</textarea>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button onclick="saveLineEdit(${idx})" class="px-2 py-1 rounded bg-green-600 hover:bg-green-500 text-white text-xs">保存</button>
+            <button onclick="cancelLineEdit(${idx}, '${escapeHtml(line)}')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-slate-300 text-xs">取消</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('edit-input').focus();
+    }
+
+    function handleEditKeydown(event, idx) {
+      if (event.key === 'Escape') {
+        cancelLineEdit(idx);
+      } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        saveLineEdit(idx);
+      }
+    }
+
+    function saveLineEdit(idx) {
+      const input = document.getElementById('edit-input');
+      if (!input) return;
+
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section) return;
+
+      const lines = section.content.split('\n');
+      lines[idx] = input.value;
+      section.content = lines.join('\n');
+      section.status = 'editing';
+
+      renderEditor();
+      renderSectionNav();
+      scheduleAutoSave();
+    }
+
+    function cancelLineEdit(idx, originalLine) {
+      renderEditor();
+    }
+
+    function deleteLine(idx) {
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section) return;
+
+      pushUndo();
+
+      const lines = section.content.split('\n');
+      lines.splice(idx, 1);
+      section.content = lines.join('\n');
+      section.status = 'editing';
+
+      renderEditor();
+      renderSectionNav();
+      scheduleAutoSave();
+    }
+
+    // AI 优化
+    function aiOptimizeLine(idx) {
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section) return;
+
+      const lines = section.content.split('\n');
+      const line = lines[idx];
+
+      if (!line.trim()) {
+        addAiMessage('AI 助手', '该行为空，无法优化。');
+        return;
+      }
+
+      selectedLineId = idx;
+      selectedText = line;
+
+      // 显示模态框
+      document.getElementById('ai-modal-original').textContent = line;
+      document.getElementById('ai-modal-optimized').innerHTML = '<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span> 生成中...';
+      document.getElementById('ai-modal').classList.remove('hidden');
+
+      // 调用 AI API
+      requestAiOptimization(line);
+    }
+
+    async function requestAiOptimization(text) {
+      try {
+        const res = await fetch(`${API}/api/ai/optimize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            context: currentMode === 'creator' ? '影视创作' : '剧本评审',
+            style: '专业'
+          })
+        });
+
+        const data = await res.json();
+        document.getElementById('ai-modal-optimized').textContent = data.optimized || '优化失败，请重试';
+      } catch (e) {
+        document.getElementById('ai-modal-optimized').textContent = '请求失败，请检查后端服务';
+      }
+    }
+
+    function regenerateAiSuggestion() {
+      if (selectedText) {
+        document.getElementById('ai-modal-optimized').innerHTML = '<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span> 生成中...';
+        requestAiOptimization(selectedText);
+      }
+    }
+
+    function acceptAiSuggestion() {
+      const optimized = document.getElementById('ai-modal-optimized').textContent;
+      if (!optimized || optimized.includes('生成中') || optimized.includes('失败')) {
+        return;
+      }
+
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section || selectedLineId === null) return;
+
+      pushUndo();
+
+      const lines = section.content.split('\n');
+      lines[selectedLineId] = optimized;
+      section.content = lines.join('\n');
+      section.status = 'editing';
+
+      closeAiModal();
+      renderEditor();
+      renderSectionNav();
+      scheduleAutoSave();
+
+      addAiMessage('AI 助手', `已优化第 ${selectedLineId + 1} 行内容。`);
+    }
+
+    function closeAiModal() {
+      document.getElementById('ai-modal').classList.add('hidden');
+      selectedLineId = null;
+      selectedText = '';
+    }
+
+    // 生成章节
+    async function generateSection(sectionId) {
+      const section = sections.find(s => s.id === sectionId);
+      if (!section) return;
+
+      section.status = 'generating';
+      renderSectionNav();
+
+      addAiMessage('AI 助手', `正在生成「${section.title}」...`);
+
+      try {
+        const res = await fetch(`${API}/api/ai/generate-section`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            section_type: section.type,
+            mode: currentMode,
+            context: getGenerationContext()
+          })
+        });
+
+        const data = await res.json();
+        section.content = data.content || '生成失败';
+        section.status = 'done';
+
+        renderSectionNav();
+        // 如果没有选中任何章节，自动选中刚生成的
+        if (!activeSectionId) {
+          activeSectionId = sectionId;
+          renderSectionNav();
+        }
+        if (activeSectionId === sectionId) {
+          renderEditor();
+        }
+
+        addAiMessage('AI 助手', `「${section.title}」已生成完成，请审阅。`);
+        scheduleAutoSave();
+      } catch (e) {
+        section.status = 'pending';
+        renderSectionNav();
+        addAiMessage('AI 助手', `生成失败：${e.message}`);
+      }
+    }
+
+    async function generateAll() {
+      const btn = document.getElementById('generate-all-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span> 生成中...';
+
+      addAiMessage('AI 助手', '开始生成所有章节...');
+
+      for (const section of sections) {
+        // 跳过用户输入型章节（如原始剧本）
+        if (section.isSource) continue;
+        if (section.status === 'pending' || !section.content) {
+          await generateSection(section.id);
+        }
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>✨</span><span>生成全部内容</span>';
+      addAiMessage('AI 助手', '所有章节生成完成！请逐段审阅修改。');
+    }
+
+    function getGenerationContext() {
+      // 收集已有内容作为上下文
+      const context = {};
+      sections.forEach(s => {
+        if (s.content) {
+          context[s.type] = s.content;
+        }
+      });
+      // 评审模式：注入待评审剧本
+      if (scriptForReview) {
+        context['script_for_review'] = scriptForReview;
+      }
+      // 注入流行元素（从 localStorage 读取）
+      try {
+        const elements = JSON.parse(localStorage.getItem('popularElements') || '[]');
+        if (elements.length > 0) {
+          context['popular_elements'] = elements;
+        }
+      } catch (e) { }
+      return context;
+    }
+
+    function onScriptImportChange() {
+      const input = document.getElementById('script-import-input');
+      scriptForReview = input.value;
+      const count = scriptForReview.length;
+      document.getElementById('script-char-count').textContent = `${count.toLocaleString()} 字符`;
+      document.getElementById('import-summary-text').textContent =
+        count > 0 ? `已导入剧本 (${count.toLocaleString()} 字)` : '导入待评审剧本';
+      // 同步到「原始剧本」章节
+      const srcSection = sections.find(s => s.id === 'script_source');
+      if (srcSection) {
+        srcSection.content = scriptForReview;
+        srcSection.status = scriptForReview ? 'done' : 'pending';
+        renderSectionNav();
+        if (activeSectionId === 'script_source') renderEditor();
+      }
+      scheduleAutoSave();
+    }
+
+    function clearScriptImport() {
+      document.getElementById('script-import-input').value = '';
+      scriptForReview = '';
+      document.getElementById('script-char-count').textContent = '0 字符';
+      document.getElementById('import-summary-text').textContent = '导入待评审剧本';
+      const srcSection = sections.find(s => s.id === 'script_source');
+      if (srcSection) {
+        srcSection.content = '';
+        srcSection.status = 'pending';
+        renderSectionNav();
+        if (activeSectionId === 'script_source') renderEditor();
+      }
+    }
+
+    // 当编辑器中的原始剧本被修改时，同步回导入框
+    function syncScriptFromEditor() {
+      const srcSection = sections.find(s => s.id === 'script_source');
+      if (srcSection && srcSection.content) {
+        scriptForReview = srcSection.content;
+        const importInput = document.getElementById('script-import-input');
+        if (importInput) importInput.value = scriptForReview;
+        const count = scriptForReview.length;
+        const charCount = document.getElementById('script-char-count');
+        if (charCount) charCount.textContent = `${count.toLocaleString()} 字符`;
+        const summaryText = document.getElementById('import-summary-text');
+        if (summaryText) summaryText.textContent = count > 0 ? `已导入剧本 (${count.toLocaleString()} 字)` : '导入待评审剧本';
+      }
+    }
+
+    // AI 助手对话
+    function addAiMessage(sender, message) {
+      const chat = document.getElementById('ai-chat');
+      const isUser = sender === '你';
+
+      chat.innerHTML += `
+        <div class="ai-message">
+          <div class="text-xs ${isUser ? 'text-blue-400' : 'text-purple-400'} mb-1">${sender}</div>
+          <div class="text-sm text-slate-300 ${isUser ? 'bg-blue-500/10' : 'bg-white/5'} rounded-lg p-3" style="white-space: pre-wrap;">${message}</div>
+        </div>
+      `;
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showThinkingIndicator() {
+      const chat = document.getElementById('ai-chat');
+      // 防止重复添加
+      if (document.getElementById('thinking-indicator')) return;
+
+      const indicator = document.createElement('div');
+      indicator.id = 'thinking-indicator';
+      indicator.className = 'ai-message';
+      indicator.innerHTML = `
+        <div class="text-xs text-purple-400 mb-1">AI 助手</div>
+        <div class="text-sm text-slate-300 bg-white/5 rounded-lg p-3 inline-flex items-center gap-1">
+          <span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span>
+          <span class="ml-1 text-[10px] text-slate-500 uppercase tracking-wider">正在思考</span>
+        </div>
+      `;
+      chat.appendChild(indicator);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideThinkingIndicator() {
+      const indicator = document.getElementById('thinking-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    function handleAiInputKeydown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendAiMessage();
+      }
+    }
+
+    async function sendAiMessage() {
+      const input = document.getElementById('ai-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      addAiMessage('你', message);
+      input.value = '';
+      input.style.height = ''; // 重置高度
+
+      showThinkingIndicator();
+
+      try {
+        const res = await fetch(`${API}/api/ai/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: message,
+            mode: currentMode,
+            model: currentModel,
+            api_source: currentApiSource,
+            current_section: activeSectionId,
+            context: getGenerationContext()
+          })
+        });
+
+        const data = await res.json();
+        hideThinkingIndicator();
+        addAiMessage('AI 助手', data.response || '抱歉，我无法处理这个请求。');
+      } catch (e) {
+        hideThinkingIndicator();
+        addAiMessage('AI 助手', '请求失败，请检查后端服务。');
+      }
+    }
+
+    async function requestAiSuggestion() {
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section || !section.content) {
+        addAiMessage('AI 助手', '请先生成或选择一个章节。');
+        return;
+      }
+
+      showThinkingIndicator();
+
+      try {
+        const res = await fetch(`${API}/api/ai/suggest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: section.content,
+            section_type: section.type,
+            mode: currentMode
+          })
+        });
+
+        const data = await res.json();
+        hideThinkingIndicator();
+        addAiMessage('AI 助手', data.suggestion || '暂无建议。');
+      } catch (e) {
+        hideThinkingIndicator();
+        addAiMessage('AI 助手', '请求失败，请检查后端服务。');
+      }
+    }
+
+    async function adjustStyle(style) {
+      const section = sections.find(s => s.id === activeSectionId);
+      if (!section || !section.content) {
+        addAiMessage('AI 助手', '请先生成或选择一个章节。');
+        return;
+      }
+
+      const styleName = style === 'concise' ? '更简洁' : '更生动';
+      showThinkingIndicator();
+
+      try {
+        const res = await fetch(`${API}/api/ai/adjust-style`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: section.content,
+            style: style
+          })
+        });
+
+        const data = await res.json();
+        hideThinkingIndicator();
+        if (data.adjusted) {
+          pushUndo();
+          section.content = data.adjusted || section.content;
+          section.status = 'editing';
+
+          renderEditor();
+          scheduleAutoSave();
+          addAiMessage('AI 助手', `已调整为${styleName}风格。`);
+        }
+      } catch (e) {
+        hideThinkingIndicator();
+        addAiMessage('AI 助手', '请求失败，请检查后端服务。');
+      }
+    }
+
+    // 撤销/重做
+    function pushUndo() {
+      const state = JSON.stringify(sections);
+      undoStack.push(state);
+      if (undoStack.length > 50) undoStack.shift();
+      redoStack = [];
+    }
+
+    function undo() {
+      if (undoStack.length === 0) return;
+
+      const current = JSON.stringify(sections);
+      redoStack.push(current);
+
+      const previous = undoStack.pop();
+      sections = JSON.parse(previous);
+
+      renderSectionNav();
+      renderEditor();
+    }
+
+    function redo() {
+      if (redoStack.length === 0) return;
+
+      const current = JSON.stringify(sections);
+      undoStack.push(current);
+
+      const next = redoStack.pop();
+      sections = JSON.parse(next);
+
+      renderSectionNav();
+      renderEditor();
+    }
+
+    // 自动保存
+    function scheduleAutoSave() {
+      clearTimeout(autoSaveTimer);
+      document.getElementById('save-status').textContent = '保存中...';
+
+      autoSaveTimer = setTimeout(async () => {
+        await saveDocument();
+        document.getElementById('save-status').textContent = '已自动保存';
+      }, 2000);
+    }
+
+    async function saveDocument() {
+      try {
+        await fetch(`${API}/api/document/save`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: currentMode,
+            sections: sections
+          })
+        });
+      } catch (e) {
+        console.error('保存失败', e);
+      }
+    }
+
+    async function checkExistingProject() {
+      try {
+        const res = await fetch(`${API}/api/document/load?mode=${currentMode}`);
+        const data = await res.json();
+
+        if (data.sections && data.sections.length > 0) {
+          // 合并已保存的数据到当前配置（而非替换），确保新增章节不会丢失
+          const savedMap = {};
+          data.sections.forEach(s => { savedMap[s.id] = s; });
+
+          sections = sections.map(s => {
+            if (savedMap[s.id]) {
+              return { ...s, ...savedMap[s.id], isSource: s.isSource };
+            }
+            return s;
+          });
+
+          renderSectionNav();
+
+          // 如果有原始剧本内容，同步到导入框
+          const srcSection = sections.find(s => s.id === 'script_source');
+          if (srcSection && srcSection.content) {
+            scriptForReview = srcSection.content;
+            const importInput = document.getElementById('script-import-input');
+            if (importInput) importInput.value = scriptForReview;
+            onScriptImportChange();
+          }
+
+          // 自动选择第一个有内容的章节
+          const firstDone = sections.find(s => s.content);
+          if (firstDone) {
+            selectSection(firstDone.id);
+          }
+        }
+      } catch (e) {
+        console.log('No existing document');
+      }
+    }
+
+    // 版本历史
+    async function showVersionHistory() {
+      document.getElementById('version-modal').classList.remove('hidden');
+      const list = document.getElementById('version-list');
+      list.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">加载中...</p>';
+
+      try {
+        const res = await fetch(`${API}/api/document/versions?mode=${currentMode}`);
+        const data = await res.json();
+
+        if (!data.versions || data.versions.length === 0) {
+          list.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">暂无历史版本</p>';
+          return;
+        }
+
+        list.innerHTML = data.versions.map(v => `
+          <div class="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer border border-white/10 mb-2">
+            <div>
+              <div class="text-sm text-white">${v.title || '自动保存'}</div>
+              <div class="text-xs text-slate-500">${v.created_at}</div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="restoreVersion('${v.id}')" class="px-3 py-1 rounded bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-xs">
+                恢复
+              </button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        list.innerHTML = '<p class="text-red-400 text-center py-4">加载失败</p>';
+      }
+    }
+
+    function closeVersionModal() {
+      document.getElementById('version-modal').classList.add('hidden');
+    }
+
+    async function restoreVersion(versionId) {
+      try {
+        const res = await fetch(`${API}/api/document/version/${versionId}`);
+        if (!res.ok) {
+          addAiMessage('AI 助手', '版本恢复失败：版本不存在');
+          return;
+        }
+        const data = await res.json();
+        if (data.sections && data.sections.length > 0) {
+          pushUndo();
+          sections = data.sections;
+          renderSectionNav();
+          const firstDone = sections.find(s => s.content);
+          if (firstDone) {
+            selectSection(firstDone.id);
+          } else {
+            renderEditor();
+          }
+          closeVersionModal();
+          addAiMessage('AI 助手', `已恢复到版本 ${versionId.split('_v').pop()}。`);
+        } else {
+          addAiMessage('AI 助手', '该版本没有内容，无法恢复。');
+        }
+      } catch (e) {
+        addAiMessage('AI 助手', `版本恢复失败：${e.message}`);
+      }
+    }
+
+    // 导出
+    function exportDocument() {
+      const content = sections.map(s => `## ${s.title}\n\n${s.content || '(无内容)'}\n`).join('\n---\n\n');
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentMode === 'creator' ? '创作' : '评审'}文档_${new Date().toISOString().slice(0, 10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 提交到下一阶段
+    async function submitToNext() {
+      const hasContent = sections.some(s => s.content);
+      if (!hasContent) {
+        alert('请先生成内容后再提交！');
+        return;
+      }
+
+      if (!confirm('确认提交到下一阶段？提交后可继续在首页查看结果。')) return;
+
+      await saveDocument();
+
+      // 根据模式启动工作流
+      const artifacts = {};
+      sections.forEach(s => {
+        if (s.content) {
+          artifacts[s.type] = s.content;
+        }
+      });
+
+      try {
+        const res = await fetch(`${API}/api/project/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: currentMode,
+            artifacts: artifacts,
+            start_from_step: currentMode === 'creator' ? 'parallel_dev' : 'direction'
+          })
+        });
+
+        if (res.ok) {
+          window.location.href = 'index.html';
+        } else {
+          alert('提交失败，请重试');
+        }
+      } catch (e) {
+        alert('提交失败：' + e.message);
+      }
+    }
+
+    // API 来源变更
+    async function onApiSourceChange() {
+      const select = document.getElementById('api-source');
+      currentApiSource = select.value;
+      localStorage.setItem('apiSource', currentApiSource);
+      await updateModelList();
+      // 切换到新 API 的第一个模型
+      const models = MODEL_LISTS[currentApiSource];
+      if (models && models.length > 0) {
+        currentModel = models[0].value;
+        document.getElementById('model-select').value = currentModel;
+        localStorage.setItem('selectedModel', currentModel);
+        updateModelBadge();
+      }
+    }
+
+    // 更新模型列表
+    async function updateModelList() {
+      const select = document.getElementById('model-select');
+
+      // 如果是 Cherry Studio，动态获取模型列表
+      if (currentApiSource === 'cherry') {
+        try {
+          const res = await fetch(`${API}/api/cherry/models`);
+          const data = await res.json();
+          if (data.models && data.models.length > 0) {
+            // Cherry Studio 不支持 openrouter: 前缀的模型，需要过滤掉
+            const filteredModels = data.models.filter(m => !m.value.startsWith('openrouter:'));
+            MODEL_LISTS.cherry = filteredModels;
+            select.innerHTML = filteredModels.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+            return;
+          }
+        } catch (e) {
+          console.error('获取 Cherry Studio 模型失败:', e);
+        }
+      }
+
+      // 使用默认模型列表
+      const models = MODEL_LISTS[currentApiSource];
+      select.innerHTML = models.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+    }
+
+    // 模型选择变更
+    function onModelChange() {
+      const select = document.getElementById('model-select');
+      currentModel = select.value;
+      localStorage.setItem('selectedModel', currentModel);
+      updateModelBadge();
+    }
+
+    // 更新模型徽章显示
+    function updateModelBadge() {
+      const badge = document.getElementById('current-model-badge');
+      const name = MODEL_NAMES[currentModel] || currentModel.split('/').pop();
+      badge.textContent = name;
+    }
+
+    // 返回首页
+    async function goBack() {
+      const btn = document.querySelector('button[onclick="goBack()"]');
+      if (btn) btn.disabled = true;
+
+      if (sections.some(s => s.content)) {
+        document.getElementById('save-status').textContent = '正在保存并返回...';
+        await saveDocument();
+      }
+      window.location.href = 'index.html';
+    }
+
+    // 字数统计
+    function updateWordCount() {
+      const total = sections.reduce((sum, s) => sum + (s.content ? s.content.length : 0), 0);
+      document.getElementById('word-count').textContent = `${total.toLocaleString()} 字符`;
+    }
+
+    // 拖拽调整右侧栏宽度
+    (function initResize() {
+      const handle = document.getElementById('resize-handle');
+      const sidebar = document.getElementById('ai-sidebar');
+      let isResizing = false;
+
+      handle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth >= 250 && newWidth <= 600) {
+          sidebar.style.width = newWidth + 'px';
+          sidebar.style.setProperty('--ai-sidebar-width', newWidth + 'px');
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (isResizing) {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          localStorage.setItem('aiSidebarWidth', sidebar.style.width);
+        }
+      });
+
+      // 恢复保存的宽度
+      const savedWidth = localStorage.getItem('aiSidebarWidth');
+      if (savedWidth) {
+        sidebar.style.width = savedWidth;
+        sidebar.style.setProperty('--ai-sidebar-width', savedWidth);
+      }
+    })();
+
+    // 初始化
+    window.addEventListener('load', init);
+  </script>
+</body>
+
+</html>
