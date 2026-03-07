@@ -544,10 +544,40 @@
     </div>
   </div>
 
+  </div>
+  </div>
+  </div>
+
+  <!-- 悬浮工作流进度 (从首页复用，用于提供生成进度感知) -->
+  <div id="workflow-panel"
+    class="hidden fixed bottom-6 right-6 z-40 w-96 glass rounded-2xl p-5 shadow-2xl border border-white/10 transition-all">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+        <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse"></div>当前执行进度
+      </h2>
+      <button onclick="document.getElementById('workflow-panel').classList.add('hidden')"
+        class="text-slate-400 hover:text-white text-lg">×</button>
+    </div>
+    <div class="space-y-3" id="agent-cards">
+      <!-- 动态生成 -->
+    </div>
+  </div>
+
   <script>
     const API = 'http://localhost:8765';
+    let eventSource = null;
+    let _agentStatuses = {};
+    const AGENTS = [
+      { id: 'creator', name: '原著作者', icon: '✍️', desc: '根据基本创意扩写大纲、角色设定' },
+      { id: 'screenwriter', name: '编剧', icon: '📝', desc: '撰写剧本' },
+      { id: 'art_director', name: '艺术总监', icon: '🎨', desc: '设计视觉风格' },
+      { id: 'reviewer', name: '剧本评审', icon: '🔍', desc: '审核质量' },
+      { id: 'director', name: '导演', icon: '🎬', desc: '统筹' }
+    ];
 
     // 页面状态
+    let currentProjectId = null;
+    let currentProjectTitle = '';
     let currentMode = 'creator'; // 'creator' or 'reviewer'
     let currentApiSource = localStorage.getItem('apiSource') || 'openrouter';
     let currentModel = localStorage.getItem('selectedModel') || 'deepseek/deepseek-v3.2';
@@ -632,7 +662,28 @@
     // 初始化页面
     async function init() {
       const params = new URLSearchParams(window.location.search);
-      currentMode = params.get('mode') || 'creator';
+      currentProjectId = params.get('project_id');
+      if (!currentProjectId) {
+        alert('项目ID不存在，即将返回首页');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // 拉取项目元数据和状态
+      await loadProjectState();
+
+      // 自动决定初始 mode
+      try {
+        const res = await fetch(`${API}/api/document/load?project_id=${currentProjectId}&mode=reviewer`);
+        const data = await res.json();
+        if (data.sections && data.sections.length > 0) {
+          currentMode = 'reviewer';
+        } else {
+          currentMode = 'creator';
+        }
+      } catch (e) {
+        currentMode = 'creator';
+      }
 
       // 初始化 API 来源和模型列表
       document.getElementById('api-source').value = currentApiSource;
@@ -648,16 +699,7 @@
       document.getElementById('model-select').value = currentModel;
       updateModelBadge();
 
-      // 更新页面标题
-      if (currentMode === 'creator') {
-        document.getElementById('page-title').textContent = '创作工作台';
-        document.title = '创作工作台 - Vision-0 Enhanced';
-      } else {
-        document.getElementById('page-title').textContent = '评审工作台';
-        document.title = '评审工作台 - Vision-0 Enhanced';
-        // 显示剧本导入面板
-        document.getElementById('script-import-panel').classList.remove('hidden');
-      }
+      applyModeUI();
 
       // 初始化章节
       sections = SECTION_CONFIGS[currentMode].map(cfg => ({
@@ -669,6 +711,81 @@
 
       renderSectionNav();
       checkExistingProject();
+      connectSSE();
+    }
+
+    async function loadProjectState() {
+      try {
+        const res = await fetch(`${API}/api/project/${currentProjectId}/state`);
+        const data = await res.json();
+
+        let seed = '未命名项目';
+        let style = '默认风格';
+        let duration = '默认时长';
+        let state = 'idle';
+
+        if (data.workflow) {
+          seed = data.workflow.seed || seed;
+          style = data.workflow.style || style;
+          duration = data.workflow.target_duration || duration;
+          state = data.workflow.status || state;
+          currentProjectTitle = data.workflow.title || data.workflow.seed || '未命名项目';
+        }
+
+        const subtitleEl = document.getElementById('page-subtitle');
+        if (subtitleEl) {
+          subtitleEl.textContent = `${style} · ${duration}`;
+          // Title logic is updated further down in applyModeUI as well
+        }
+
+        // 初始拉取数据后更新进度卡片
+        if (data.workflow && ['running', 'completed'].includes(state)) {
+          if (state === 'running') {
+            showWorkflowUI();
+          }
+          if (data.logs) {
+            updateAgentCardsFromLogs(data.logs);
+          }
+        }
+      } catch (e) {
+        console.error("加载项目状态失败", e);
+      }
+    }
+
+    function switchMode(newMode) {
+      if (sections.some(s => s.content)) saveDocument();
+      currentMode = newMode;
+      applyModeUI();
+      sections = SECTION_CONFIGS[currentMode].map(cfg => ({
+        ...cfg,
+        content: '',
+        status: 'pending',
+        blocks: []
+      }));
+      renderSectionNav();
+      checkExistingProject();
+      selectedLineId = null;
+      renderEditor();
+    }
+
+    function applyModeUI() {
+      const titleEl = document.getElementById('page-title');
+      const genBtnText = document.querySelector('#generate-all-btn span:last-child');
+      const displayTitle = currentProjectTitle || '创作工作台';
+
+      if (titleEl) {
+        if (currentMode === 'creator') {
+          titleEl.innerHTML = `🌟 ${displayTitle} <span class="text-[10px] ml-3 border border-purple-500/30 px-2 py-0.5 rounded cursor-pointer text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors" onclick="switchMode('reviewer')">切至评审 ▾</span>`;
+          document.title = `${displayTitle} - 创作工作台 - Vision-0 Enhanced`;
+          document.getElementById('script-import-panel').classList.add('hidden');
+          if (genBtnText) genBtnText.textContent = '生成全部内容';
+        } else {
+          titleEl.innerHTML = `📝 ${displayTitle} <span class="text-[10px] ml-3 border border-purple-500/30 px-2 py-0.5 rounded cursor-pointer text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors" onclick="switchMode('creator')">切至创作 ▾</span>`;
+          document.title = `${displayTitle} - 评审工作台 - Vision-0 Enhanced`;
+          document.getElementById('script-import-panel').classList.remove('hidden');
+          if (genBtnText) genBtnText.textContent = '启动评审分析';
+        }
+      }
     }
 
     function renderSectionNav() {
@@ -712,13 +829,23 @@
       const container = document.getElementById('editor-container');
 
       if (!section.content) {
+        if (section.id === 'script_source') {
+          container.innerHTML = `
+             <div class="h-full flex flex-col items-center justify-center text-slate-500">
+               <div class="text-4xl mb-4">📝</div>
+               <p class="text-sm mb-4">待评审的剧本为空，请在左侧侧边栏导入剧本内容。</p>
+             </div>
+           `;
+          return;
+        }
+
         container.innerHTML = `
           <div class="h-full flex flex-col items-center justify-center text-slate-500">
             <div class="text-4xl mb-4">${section.title}</div>
-            <p class="text-sm mb-4">此章节尚未生成内容</p>
+            <p class="text-sm mb-4">此章节尚未成内容，或等待分析</p>
             <button onclick="generateSection('${section.id}')"
               class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm transition-all">
-              ✨ 生成此章节
+              ✨ ${currentMode === 'reviewer' ? '执行评审' : '生成此章节'}
             </button>
           </div>
         `;
@@ -1130,11 +1257,19 @@
     }
 
     async function generateAll() {
+      if (currentMode === 'reviewer') {
+        const srcSection = sections.find(s => s.id === 'script_source');
+        if (!srcSection || !srcSection.content) {
+          addAiMessage('AI 助手', '请先在左侧边栏导入待评审的剧本内容。');
+          return;
+        }
+      }
+
       const btn = document.getElementById('generate-all-btn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span> 生成中...';
+      btn.innerHTML = '<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span> 处理中...';
 
-      addAiMessage('AI 助手', '开始生成所有章节...');
+      addAiMessage('AI 助手', currentMode === 'reviewer' ? '开始执行剧本评审分析...' : '开始生成所有章节...');
 
       for (const section of sections) {
         // 跳过用户输入型章节（如原始剧本）
@@ -1417,6 +1552,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            project_id: currentProjectId,
             mode: currentMode,
             sections: sections
           })
@@ -1428,7 +1564,7 @@
 
     async function checkExistingProject() {
       try {
-        const res = await fetch(`${API}/api/document/load?mode=${currentMode}`);
+        const res = await fetch(`${API}/api/document/load?project_id=${currentProjectId}&mode=${currentMode}`);
         const data = await res.json();
 
         if (data.sections && data.sections.length > 0) {
@@ -1472,7 +1608,7 @@
       list.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">加载中...</p>';
 
       try {
-        const res = await fetch(`${API}/api/document/versions?mode=${currentMode}`);
+        const res = await fetch(`${API}/api/document/versions?project_id=${currentProjectId}&mode=${currentMode}`);
         const data = await res.json();
 
         if (!data.versions || data.versions.length === 0) {
@@ -1567,6 +1703,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            project_id: currentProjectId,
             mode: currentMode,
             artifacts: artifacts,
             start_from_step: currentMode === 'creator' ? 'parallel_dev' : 'direction'
@@ -1695,6 +1832,83 @@
         sidebar.style.setProperty('--ai-sidebar-width', savedWidth);
       }
     })();
+
+    // --- SSE 与工作流状态指示 ---
+    function showWorkflowUI() {
+      document.getElementById('workflow-panel').classList.remove('hidden');
+      document.getElementById('log-pulse').style.display = 'block';
+      if (Object.keys(_agentStatuses).length === 0) renderAgentCards({});
+    }
+
+    function connectSSE() {
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource(`${API}/api/events?project_id=${currentProjectId}`);
+
+      eventSource.addEventListener('init', e => handleSSEUpdate(JSON.parse(e.data)));
+      eventSource.addEventListener('update', e => handleSSEUpdate(JSON.parse(e.data)));
+      eventSource.addEventListener('heartbeat', () => { });
+      eventSource.onerror = () => {
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    function handleSSEUpdate(data) {
+      if (data.workflow) {
+        if (data.workflow.status === 'running') {
+          showWorkflowUI();
+        } else if (data.workflow.status === 'completed') {
+          document.getElementById('log-pulse').style.display = 'none';
+          setTimeout(() => {
+            document.getElementById('workflow-panel').classList.add('hidden');
+          }, 5000);
+
+          // 如果完成了，可能是后台在运行评审，检查是否可以刷新本地文档
+          checkExistingProject();
+        }
+      }
+      if (data.artifacts) {
+        updateAgentCardsFromLogs(data.logs || []);
+      }
+    }
+
+    function renderAgentCards(agentStatuses) {
+      _agentStatuses = agentStatuses;
+      const container = document.getElementById('agent-cards');
+      if (!container) return;
+      container.innerHTML = AGENTS.map(a => {
+        const st = agentStatuses[a.id] || 'idle';
+        let cls = 'idle', statusText = '等待中', dotCls = 'bg-slate-600';
+        if (st === 'thinking') { cls = 'active border-purple-500/50'; statusText = '工作中...'; dotCls = 'bg-purple-400 pulse-dot'; }
+        else if (st === 'reflecting') { cls = 'reflecting border-yellow-500/50'; statusText = '反思中...'; dotCls = 'bg-yellow-400 pulse-dot'; }
+        else if (st === 'completed') { cls = 'completed border-green-500/50'; statusText = '已完成'; dotCls = 'bg-green-400'; }
+        else if (st === 'failed') { cls = 'border-red-500/50'; statusText = '失败'; dotCls = 'bg-red-400'; }
+
+        return `<div class="bg-black/20 rounded-lg p-2.5 flex items-center justify-between border border-white/5 transition-all ${cls}">
+      <div class="flex items-center gap-3">
+        <span class="text-base">${a.icon}</span>
+        <div>
+           <div class="font-medium text-xs text-white">${a.name}</div>
+           <div class="text-[10px] text-slate-400 mt-0.5">${statusText}</div>
+        </div>
+      </div>
+      <div class="w-1.5 h-1.5 rounded-full ${dotCls}"></div>
+    </div>`;
+      }).join('');
+    }
+
+    function updateAgentCardsFromLogs(logs) {
+      if (!logs) return;
+      const agentStatuses = {};
+      const agentNameMap = {
+        '原著作者': 'creator', '编剧': 'screenwriter',
+        '艺术总监': 'art_director', '剧本评审': 'reviewer', '导演': 'director',
+      };
+      logs.forEach(log => {
+        const id = agentNameMap[log.agent];
+        if (id) agentStatuses[id] = log.status;
+      });
+      renderAgentCards(agentStatuses);
+    }
 
     // 初始化
     window.addEventListener('load', init);

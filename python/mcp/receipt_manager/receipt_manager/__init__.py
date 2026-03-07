@@ -100,12 +100,13 @@ class PurchaseReceipt:
         """
         生成Excel Sheet名称
 
-        格式：主题名称（月-日）
-        例如：数学资料打印（1-20）
+        格式：主题名称（年-月-日）
+        例如：数学资料打印（2026-1-20）
         """
+        year = self.delivery_date.year
         month = self.delivery_date.month
         day = self.delivery_date.day
-        return f"{self.title}（{month}-{day}）"
+        return f"{self.title}（{year}-{month}-{day}）"
 
     @property
     def total_amount(self) -> Decimal:

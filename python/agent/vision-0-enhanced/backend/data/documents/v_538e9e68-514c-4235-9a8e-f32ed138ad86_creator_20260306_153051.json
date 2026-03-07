@@ -1,0 +1,35 @@
+{
+  "id": "96a548e3",
+  "project_id": "538e9e68-514c-4235-9a8e-f32ed138ad86",
+  "mode": "creator",
+  "sections": [
+    {
+      "id": "logline",
+      "title": "💡 Logline",
+      "desc": "一句话梗概",
+      "type": "logline",
+      "content": "一位落魄拳手为拯救病危女儿，被迫重返地下拳坛，却发现自己陷入黑帮的致命赌局，必须在残酷的生死战中揭露幕后阴谋，而最大的阻碍是昔日的恩师正是操纵一切的敌人。",
+      "status": "done",
+      "blocks": []
+    },
+    {
+      "id": "characters",
+      "title": "👥 角色设定",
+      "desc": "主要角色档案",
+      "type": "character_sheets",
+      "content": "",
+      "status": "generating",
+      "blocks": []
+    },
+    {
+      "id": "beats",
+      "title": "📋 节拍表",
+      "desc": "故事结构节拍",
+      "type": "beat_sheet",
+      "content": "",
+      "status": "pending",
+      "blocks": []
+    }
+  ],
+  "created_at": "2026-03-06T15:30:51.019439"
+}

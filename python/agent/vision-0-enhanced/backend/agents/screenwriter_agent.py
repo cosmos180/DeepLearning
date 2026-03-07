@@ -47,9 +47,9 @@ class ScreenwriterAgent(BaseAgent):
 [包含：总场景数、预估时长、每幕场景分布、场景实体状态追踪表]"""
 
     async def build_user_prompt(self) -> str:
-        logline = await self.bb.read(ArtifactType.LOGLINE) or "（未找到 Logline）"
-        characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or "（未找到角色设定）"
-        beat_sheet = await self.bb.read(ArtifactType.BEAT_SHEET) or "（未找到节拍表）"
+        logline = await self.bb.read(self.project_id, ArtifactType.LOGLINE) or "（未找到 Logline）"
+        characters = await self.bb.read(self.project_id, ArtifactType.CHARACTER_SHEETS) or "（未找到角色设定）"
+        beat_sheet = await self.bb.read(self.project_id, ArtifactType.BEAT_SHEET) or "（未找到节拍表）"
 
         return f"""请根据以下故事圣经，创作完整的标准格式剧本：
 
@@ -89,5 +89,5 @@ class ScreenwriterAgent(BaseAgent):
         if not sections["SCRIPT"]:
             sections["SCRIPT"] = raw_output
 
-        await self.bb.publish(ArtifactType.SCRIPT, sections["SCRIPT"].strip())
-        await self.bb.publish(ArtifactType.SCRIPT_NOTES, sections["SCRIPT_NOTES"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.SCRIPT, sections["SCRIPT"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.SCRIPT_NOTES, sections["SCRIPT_NOTES"].strip())

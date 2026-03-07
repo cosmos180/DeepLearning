@@ -69,13 +69,13 @@ class Orchestrator:
         self._agent_models = agent_models
 
         # 清理并设置初始状态
-        await self.bb.clear_all()
+        await self.bb.delete_project(self.project_id)
 
         # 如果有预置产出物，加载到黑板
         if artifacts:
             await self._load_artifacts(artifacts)
             await self.bb.log_agent(
-                "调度器", AgentStatus.THINKING,
+                self.project_id, "调度器", AgentStatus.THINKING,
                 f"已加载 {len(artifacts)} 个预置产出物"
             )
 
@@ -117,7 +117,7 @@ class Orchestrator:
                 current_step=STEP_COMPLETED
             )
             await self.bb.log_agent(
-                "调度器", AgentStatus.COMPLETED,
+                self.project_id, "调度器", AgentStatus.COMPLETED,
                 "🎬 所有制作阶段完成！影视项目已就绪。"
             )
 
@@ -129,14 +129,14 @@ class Orchestrator:
                 current_step=STEP_FAILED
             )
             await self.bb.log_agent(
-                "调度器", AgentStatus.FAILED,
+                self.project_id, "调度器", AgentStatus.FAILED,
                 f"工作流执行失败: {str(e)}"
             )
             raise
 
     async def _load_artifacts(self, artifacts: dict[str, str]):
         """加载预置产出物到黑板"""
-        await self.bb.publish_many(artifacts)
+        await self.bb.publish_many(self.project_id, artifacts)
 
     async def _run_creation(self):
         """步骤 1：原著作者创作故事圣经"""
@@ -153,7 +153,7 @@ class Orchestrator:
         """步骤 2：编剧 + 艺术总监并行工作"""
         await self._update_step(STEP_PARALLEL_DEV)
         await self.bb.log_agent(
-            "调度器", AgentStatus.THINKING,
+            self.project_id, "调度器", AgentStatus.THINKING,
             "启动并行阶段：编剧 + 艺术总监同时工作..."
         )
 
@@ -169,7 +169,7 @@ class Orchestrator:
         )
 
         await self.bb.log_agent(
-            "调度器", AgentStatus.THINKING,
+            self.project_id, "调度器", AgentStatus.THINKING,
             "并行阶段完成，编剧和艺术总监均已提交成果"
         )
 
@@ -186,18 +186,18 @@ class Orchestrator:
             verdict = reviewer.get_verdict()
 
             await self.bb.log_agent(
-                "调度器", AgentStatus.THINKING,
+                self.project_id, "调度器", AgentStatus.THINKING,
                 f"评审结论: {verdict}（第 {revision_count + 1} 轮）"
             )
 
             if verdict == "PASS":
                 await self.bb.log_agent(
-                    "调度器", AgentStatus.THINKING, "剧本通过评审，进入导演阶段"
+                    self.project_id, "调度器", AgentStatus.THINKING, "剧本通过评审，进入导演阶段"
                 )
                 break
             elif verdict == "REJECT" and revision_count >= MAX_REVISION_ROUNDS:
                 await self.bb.log_agent(
-                    "调度器", AgentStatus.THINKING,
+                    self.project_id, "调度器", AgentStatus.THINKING,
                     f"已达最大修订轮数 ({MAX_REVISION_ROUNDS})，强制进入导演阶段"
                 )
                 break
@@ -205,7 +205,7 @@ class Orchestrator:
                 revision_count += 1
                 await self._update_step(STEP_REVISION, iteration_count=revision_count)
                 await self.bb.log_agent(
-                    "调度器", AgentStatus.THINKING,
+                    self.project_id, "调度器", AgentStatus.THINKING,
                     f"剧本需要修订（第 {revision_count} 轮），重新召唤编剧..."
                 )
                 # 重新运行编剧（会读取评审报告作为上下文）
@@ -239,7 +239,7 @@ class Orchestrator:
             iteration_count=iteration_count
         )
         await self.bb.log_agent(
-            "调度器", AgentStatus.THINKING,
+            self.project_id, "调度器", AgentStatus.THINKING,
             f"进入步骤：{display}"
         )
 
@@ -253,7 +253,7 @@ class Orchestrator:
         doc_path = Path(__file__).parent.parent / "data" / "docs"
         doc_path.mkdir(parents=True, exist_ok=True)
         
-        artifacts = await self.bb.read_all()
+        artifacts = await self.bb.read_all(self.project_id)
         now_str = datetime.now().isoformat()
 
         # 构建 creator 文档
@@ -273,11 +273,12 @@ class Orchestrator:
             doc_id = hashlib.md5(f"creator_{now_str}".encode()).hexdigest()[:8]
             doc_data = {
                 "id": doc_id,
+                "project_id": self.project_id,
                 "mode": "creator",
                 "sections": creator_sections,
                 "created_at": now_str,
             }
-            with open(doc_path / "creator_current.json", "w", encoding="utf-8") as f:
+            with open(doc_path / f"{self.project_id}_creator.json", "w", encoding="utf-8") as f:
                 json.dump(doc_data, f, ensure_ascii=False, indent=2)
 
         # 构建 reviewer 文档
@@ -314,16 +315,17 @@ class Orchestrator:
             doc_id = hashlib.md5(f"reviewer_{now_str}".encode()).hexdigest()[:8]
             doc_data = {
                 "id": doc_id,
+                "project_id": self.project_id,
                 "mode": "reviewer",
                 "sections": reviewer_sections,
                 "created_at": now_str,
             }
-            with open(doc_path / "reviewer_current.json", "w", encoding="utf-8") as f:
+            with open(doc_path / f"{self.project_id}_reviewer.json", "w", encoding="utf-8") as f:
                 json.dump(doc_data, f, ensure_ascii=False, indent=2)
 
     async def _build_summary(self) -> dict:
         """构建最终产出物摘要"""
-        artifacts = await self.bb.read_all()
+        artifacts = await self.bb.read_all(self.project_id)
         summary = {}
         for key, val in artifacts.items():
             content = val.get("content", "")

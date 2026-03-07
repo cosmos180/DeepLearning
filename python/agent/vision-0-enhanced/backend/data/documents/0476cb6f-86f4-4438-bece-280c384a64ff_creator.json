@@ -1,0 +1,35 @@
+{
+  "id": "f3ebcb4f",
+  "project_id": "0476cb6f-86f4-4438-bece-280c384a64ff",
+  "mode": "creator",
+  "sections": [
+    {
+      "id": "logline",
+      "title": "💡 Logline",
+      "desc": "一句话梗概",
+      "type": "logline",
+      "content": "生成失败：Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}",
+      "status": "done",
+      "blocks": []
+    },
+    {
+      "id": "characters",
+      "title": "👥 角色设定",
+      "desc": "主要角色档案",
+      "type": "character_sheets",
+      "content": "生成失败：Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}",
+      "status": "done",
+      "blocks": []
+    },
+    {
+      "id": "beats",
+      "title": "📋 节拍表",
+      "desc": "故事结构节拍",
+      "type": "beat_sheet",
+      "content": "生成失败：Error code: 401 - {'error': {'message': 'Missing Authentication header', 'code': 401}}",
+      "status": "done",
+      "blocks": []
+    }
+  ],
+  "created_at": "2026-03-06T11:40:25.979770"
+}

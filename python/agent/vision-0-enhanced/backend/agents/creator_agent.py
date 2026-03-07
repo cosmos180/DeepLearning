@@ -94,6 +94,6 @@ class CreatorAgent(BaseAgent):
         if not any(sections.values()):
             sections["LOGLINE"] = raw_output
 
-        await self.bb.publish(ArtifactType.LOGLINE, sections["LOGLINE"].strip())
-        await self.bb.publish(ArtifactType.CHARACTER_SHEETS, sections["CHARACTER_SHEETS"].strip())
-        await self.bb.publish(ArtifactType.BEAT_SHEET, sections["BEAT_SHEET"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.LOGLINE, sections["LOGLINE"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.CHARACTER_SHEETS, sections["CHARACTER_SHEETS"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.BEAT_SHEET, sections["BEAT_SHEET"].strip())

@@ -60,7 +60,7 @@ class BaseAgent(ABC):
         对输出进行自我反思评估。
         返回 (is_good_enough, feedback)
         """
-        await self.bb.log_agent(self.name, AgentStatus.REFLECTING, "正在进行自我反思评估...")
+        await self.bb.log_agent(self.project_id, self.name, AgentStatus.REFLECTING, "正在进行自我反思评估...")
 
         reflection_prompt = f"""你是一个严格的质量评审员。请评估以下内容是否满足标准。
 
@@ -127,7 +127,7 @@ class BaseAgent(ABC):
         3. 反思评估（最多 max_reflection_rounds 轮）
         4. 发布结果到黑板
         """
-        await self.bb.log_agent(self.name, AgentStatus.THINKING, f"{self.name} 开始工作...")
+        await self.bb.log_agent(self.project_id, self.name, AgentStatus.THINKING, f"{self.name} 开始工作...")
 
         user_prompt = await self.build_user_prompt()
 
@@ -153,13 +153,25 @@ class BaseAgent(ABC):
                 project_id=self.project_id
             )
 
-            current_output, tokens = await call_llm(
+            from ..core.llm_client import call_llm_stream
+            
+            # 使用流式接口并向前端广播 Token
+            stream_gen = call_llm_stream(
                 system_prompt=self.system_prompt,
                 user_prompt=user_prompt_with_feedback,
                 model=self.model,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
             )
+            
+            chunks = []
+            async for chunk in stream_gen:
+                chunks.append(chunk)
+                await self.bb.stream_output(self.project_id, self.name, chunk)
+                
+            current_output = "".join(chunks)
+            # 粗略估算 token (中文/英文混合)
+            tokens = len(current_output) // 2 
 
             duration_ms = int((time.time() - start_time) * 1000)
 
@@ -178,13 +190,13 @@ class BaseAgent(ABC):
                 self._last_feedback = feedback
                 if passed:
                     await self.bb.log_agent(
-                        self.name, AgentStatus.REFLECTING,
+                        self.project_id, self.name, AgentStatus.REFLECTING,
                         f"反思通过（第 {round_num + 1} 轮），准备发布结果"
                     )
                     break
                 else:
                     await self.bb.log_agent(
-                        self.name, AgentStatus.REFLECTING,
+                        self.project_id, self.name, AgentStatus.REFLECTING,
                         f"反思发现问题（第 {round_num + 1} 轮），进行修订",
                         feedback
                     )
@@ -193,5 +205,5 @@ class BaseAgent(ABC):
 
         # 发布到黑板
         await self.parse_and_publish(current_output)
-        await self.bb.log_agent(self.name, AgentStatus.COMPLETED, f"{self.name} 完成工作")
+        await self.bb.log_agent(self.project_id, self.name, AgentStatus.COMPLETED, f"{self.name} 完成工作")
         return current_output

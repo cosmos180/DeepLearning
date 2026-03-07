@@ -69,11 +69,11 @@ class ReviewerAgent(BaseAgent):
 [只写以下三个之一：PASS / MINOR_FIX / REJECT]"""
 
     async def build_user_prompt(self) -> str:
-        logline = await self.bb.read(ArtifactType.LOGLINE) or ""
-        characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or ""
-        beat_sheet = await self.bb.read(ArtifactType.BEAT_SHEET) or ""
-        script = await self.bb.read(ArtifactType.SCRIPT) or ""
-        script_notes = await self.bb.read(ArtifactType.SCRIPT_NOTES) or ""
+        logline = await self.bb.read(self.project_id, ArtifactType.LOGLINE) or ""
+        characters = await self.bb.read(self.project_id, ArtifactType.CHARACTER_SHEETS) or ""
+        beat_sheet = await self.bb.read(self.project_id, ArtifactType.BEAT_SHEET) or ""
+        script = await self.bb.read(self.project_id, ArtifactType.SCRIPT) or ""
+        script_notes = await self.bb.read(self.project_id, ArtifactType.SCRIPT_NOTES) or ""
 
         return f"""请对以下剧本进行全面的临床诊断：
 
@@ -132,7 +132,7 @@ class ReviewerAgent(BaseAgent):
                 verdict = "MINOR_FIX"
 
         full_report = f"{report.strip()}\n\n---\n**评审结论代码**: {verdict}"
-        await self.bb.publish(ArtifactType.REVIEW_REPORT, full_report)
+        await self.bb.publish(self.project_id, ArtifactType.REVIEW_REPORT, full_report)
         self.verdict = verdict
 
     def get_verdict(self) -> str:

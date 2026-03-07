@@ -51,9 +51,9 @@ class ArtDirectorAgent(BaseAgent):
         # 新增强制中文约束
         constraint = "【重要提示】请确保所有输出内容严格使用中文（包括所有标题、标签和术语）。"
 
-        logline = await self.bb.read(ArtifactType.LOGLINE) or ""
-        characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or ""
-        beat_sheet = await self.bb.read(ArtifactType.BEAT_SHEET) or ""
+        logline = await self.bb.read(self.project_id, ArtifactType.LOGLINE) or ""
+        characters = await self.bb.read(self.project_id, ArtifactType.CHARACTER_SHEETS) or ""
+        beat_sheet = await self.bb.read(self.project_id, ArtifactType.BEAT_SHEET) or ""
 
         return f"""请根据以下故事圣经，制定视觉风格圣经：
 
@@ -76,4 +76,4 @@ class ArtDirectorAgent(BaseAgent):
         else:
             style_guide = raw_output
 
-        await self.bb.publish(ArtifactType.STYLE_GUIDE, style_guide)
+        await self.bb.publish(self.project_id, ArtifactType.STYLE_GUIDE, style_guide)

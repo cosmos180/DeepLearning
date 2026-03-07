@@ -347,5 +347,27 @@ def monthly(year, excel_path):
     click.echo(result)
 
 
+@cli.command("merge-by-date")
+@click.argument("date")
+@click.option("--excel-path", default=DEFAULT_EXCEL, help="Excel 文件路径")
+@click.option("--keep-original", is_flag=True, help="保留原 Sheet（默认删除）")
+def merge_by_date_cmd(date, excel_path, keep_original):
+    """按日期合并收据（删除原 Sheet）
+
+    \b
+    示例:
+        合并 2026年2月26日的收据: merge-by-date 2026-2-26
+        合并 2月26日的收据:       merge-by-date 2-26
+        合并并保留原表:           merge-by-date 2-26 --keep-original
+    """
+    excel = _import_excel()
+    result = excel.merge_by_date(
+        target_date=date,
+        excel_path=excel_path,
+        keep_original=keep_original,
+    )
+    click.echo(result)
+
+
 if __name__ == "__main__":
     cli()

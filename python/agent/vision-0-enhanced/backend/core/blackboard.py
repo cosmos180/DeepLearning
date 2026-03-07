@@ -60,6 +60,7 @@ class Blackboard:
         await self._db.execute("""
             CREATE TABLE IF NOT EXISTS artifacts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL DEFAULT 'default',
                 artifact_type TEXT NOT NULL,
                 content TEXT NOT NULL,
                 version INTEGER DEFAULT 1,
@@ -84,6 +85,7 @@ class Blackboard:
         await self._db.execute("""
             CREATE TABLE IF NOT EXISTS agent_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL DEFAULT 'default',
                 agent_name TEXT NOT NULL,
                 status TEXT NOT NULL,
                 message TEXT,
@@ -94,7 +96,7 @@ class Blackboard:
         await self._db.execute("""
             CREATE TABLE IF NOT EXISTS trace_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id TEXT,
+                project_id TEXT NOT NULL DEFAULT 'default',
                 agent_name TEXT NOT NULL,
                 event_type TEXT NOT NULL,
                 content TEXT,
@@ -111,26 +113,26 @@ class Blackboard:
 
     # ─── Artifact 管理 ────────────────────────────────────────────────────────
 
-    async def publish(self, artifact_type: ArtifactType, content: str) -> None:
+    async def publish(self, project_id: str, artifact_type: ArtifactType, content: str) -> None:
         """发布一个新的产出物到黑板，并通知所有订阅者"""
         now = datetime.now().isoformat()
         # 检查是否已存在
         async with self._db.execute(
-            "SELECT id, version FROM artifacts WHERE artifact_type = ?",
-            (artifact_type.value,)
+            "SELECT id, version FROM artifacts WHERE project_id = ? AND artifact_type = ?",
+            (project_id, artifact_type.value)
         ) as cursor:
             row = await cursor.fetchone()
 
         if row:
             new_version = row[1] + 1
             await self._db.execute(
-                "UPDATE artifacts SET content=?, version=?, updated_at=? WHERE artifact_type=?",
-                (content, new_version, now, artifact_type.value)
+                "UPDATE artifacts SET content=?, version=?, updated_at=? WHERE project_id=? AND artifact_type=?",
+                (content, new_version, now, project_id, artifact_type.value)
             )
         else:
             await self._db.execute(
-                "INSERT INTO artifacts (artifact_type, content, version, created_at, updated_at) VALUES (?,?,1,?,?)",
-                (artifact_type.value, content, now, now)
+                "INSERT INTO artifacts (project_id, artifact_type, content, version, created_at, updated_at) VALUES (?,?,?,1,?,?)",
+                (project_id, artifact_type.value, content, now, now)
             )
         await self._db.commit()
 
@@ -139,19 +141,22 @@ class Blackboard:
             for queue in self._subscribers[artifact_type.value]:
                 await queue.put({"type": artifact_type.value, "content": content})
 
-    async def read(self, artifact_type: ArtifactType) -> Optional[str]:
+    async def read(self, project_id: str, artifact_type: ArtifactType) -> Optional[str]:
         """读取指定类型的最新产出物"""
         async with self._db.execute(
-            "SELECT content FROM artifacts WHERE artifact_type = ?",
-            (artifact_type.value,)
+            "SELECT content FROM artifacts WHERE project_id = ? AND artifact_type = ?",
+            (project_id, artifact_type.value)
         ) as cursor:
             row = await cursor.fetchone()
             return row[0] if row else None
 
-    async def read_all(self) -> dict[str, Any]:
+    async def read_all(self, project_id: str) -> dict[str, Any]:
         """读取所有产出物"""
         result = {}
-        async with self._db.execute("SELECT artifact_type, content, version, updated_at FROM artifacts") as cursor:
+        async with self._db.execute(
+            "SELECT artifact_type, content, version, updated_at FROM artifacts WHERE project_id = ?",
+            (project_id,)
+        ) as cursor:
             rows = await cursor.fetchall()
             for row in rows:
                 result[row[0]] = {
@@ -161,6 +166,14 @@ class Blackboard:
                 }
         return result
 
+    async def delete_project(self, project_id: str):
+        """删除特定项目的所有数据（清空）"""
+        await self._db.execute("DELETE FROM artifacts WHERE project_id = ?", (project_id,))
+        await self._db.execute("DELETE FROM workflow_state WHERE project_id = ?", (project_id,))
+        await self._db.execute("DELETE FROM agent_logs WHERE project_id = ?", (project_id,))
+        await self._db.execute("DELETE FROM trace_events WHERE project_id = ?", (project_id,))
+        await self._db.commit()
+
     async def clear_all(self):
         """清空所有数据（用于新项目开始）"""
         await self._db.execute("DELETE FROM artifacts")
@@ -169,7 +182,7 @@ class Blackboard:
         await self._db.execute("DELETE FROM trace_events")
         await self._db.commit()
 
-    async def publish_many(self, artifacts: dict[str, str]) -> None:
+    async def publish_many(self, project_id: str, artifacts: dict[str, str]) -> None:
         """
         批量发布产出物到黑板。
         artifacts: {artifact_type_value: content, ...}
@@ -179,7 +192,7 @@ class Blackboard:
             # 验证是否为有效的 ArtifactType
             try:
                 artifact_type = ArtifactType(artifact_type_str)
-                await self.publish(artifact_type, content)
+                await self.publish(project_id, artifact_type, content)
             except ValueError:
                 # 忽略无效的类型
                 print(f"Warning: Unknown artifact type '{artifact_type_str}' ignored")
@@ -229,26 +242,77 @@ class Blackboard:
 
     # ─── Agent 日志 ───────────────────────────────────────────────────────────
 
-    async def log_agent(self, agent_name: str, status: AgentStatus,
+    async def log_agent(self, project_id: str, agent_name: str, status: AgentStatus,
                          message: str, detail: Optional[str] = None):
         now = datetime.now().isoformat()
         await self._db.execute(
-            "INSERT INTO agent_logs (agent_name, status, message, detail, created_at) VALUES (?,?,?,?,?)",
-            (agent_name, status.value, message, detail, now)
+            "INSERT INTO agent_logs (project_id, agent_name, status, message, detail, created_at) VALUES (?,?,?,?,?,?)",
+            (project_id, agent_name, status.value, message, detail, now)
         )
         await self._db.commit()
         await self._notify_state_change()
 
-    async def get_agent_logs(self, limit: int = 50) -> list[dict]:
+    async def get_agent_logs(self, project_id: str, limit: int = 50) -> list[dict]:
         async with self._db.execute(
-            "SELECT agent_name, status, message, detail, created_at FROM agent_logs ORDER BY id DESC LIMIT ?",
-            (limit,)
+            "SELECT agent_name, status, message, detail, created_at FROM agent_logs WHERE project_id = ? ORDER BY id DESC LIMIT ?",
+            (project_id, limit)
         ) as cursor:
             rows = await cursor.fetchall()
             return [
                 {"agent": r[0], "status": r[1], "message": r[2], "detail": r[3], "time": r[4]}
                 for r in reversed(rows)
             ]
+
+    async def get_all_projects(self) -> list[dict]:
+        """获取所有项目概览"""
+        projects = []
+        async with self._db.execute("""
+            SELECT w.project_id, w.status, w.current_step, w.seed, w.target_duration, w.style, w.updated_at,
+                   (SELECT message FROM agent_logs a WHERE a.project_id = w.project_id AND a.status = 'FAILED' ORDER BY created_at DESC LIMIT 1) as error_msg
+            FROM workflow_state w
+            ORDER BY w.updated_at DESC
+        """) as cursor:
+            rows = await cursor.fetchall()
+            for row in rows:
+                project_id = row[0]
+                
+                # 提取标题和简介 (从 logline 或者 取 seed 前20字)
+                title = row[3] if row[3] else "未命名项目"
+                summary = "暂无简介..."
+                
+                async with self._db.execute(
+                    "SELECT content FROM artifacts WHERE project_id = ? AND artifact_type = 'logline'",
+                    (project_id,)
+                ) as art_cursor:
+                    art_row = await art_cursor.fetchone()
+                    if art_row and art_row[0]:
+                        try:
+                            import json
+                            logline_data = json.loads(art_row[0])
+                            
+                            title = logline_data.get("title", title)
+                            summary = logline_data.get("one_sentence_summary", summary)
+                        except:
+                            # 降级处理
+                            lines = art_row[0].split('\n')
+                            for line in lines:
+                                if line.strip() and not line.startswith('#'):
+                                    summary = line.strip()
+                                    break
+                            
+                projects.append({
+                    "project_id": project_id,
+                    "status": row[1],
+                    "current_step": row[2],
+                    "seed": row[3],
+                    "target_duration": row[4],
+                    "style": row[5],
+                    "updated_at": row[6],
+                    "error_msg": row[7],
+                    "title": title,
+                    "summary": summary
+                })
+        return projects
 
     # ─── 追踪事件 (Observability) ─────────────────────────────────────────────
 
@@ -299,13 +363,22 @@ class Blackboard:
                 pass
 
     def subscribe_sse(self) -> asyncio.Queue:
-        q = asyncio.Queue(maxsize=100)
+        q = asyncio.Queue(maxsize=5000)
         self._sse_queues.append(q)
         return q
 
     def unsubscribe_sse(self, q: asyncio.Queue):
         if q in self._sse_queues:
             self._sse_queues.remove(q)
+            
+    async def stream_output(self, project_id: str, agent_name: str, chunk: str):
+        """流式广播产生的 token"""
+        print(f"DEBUG STREAM OUTPUT: {repr(chunk)}", flush=True)
+        for q in self._sse_queues:
+            try:
+                q.put_nowait({"type": "stream", "project_id": project_id, "agent": agent_name, "chunk": chunk})
+            except asyncio.QueueFull:
+                pass
 
 
 # 全局单例

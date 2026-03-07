@@ -10,12 +10,15 @@ from pathlib import Path
 from typing import Optional
 from datetime import date
 from decimal import Decimal
+import logging
 
 from receipt_manager.excel_handler import ExcelHandler
 from receipt_manager import PurchaseReceipt
 from copy import copy
 import zipfile
 import xml.etree.ElementTree as ET
+
+logger = logging.getLogger(__name__)
 
 
 def _get_sheet_order_from_xml(excel_file: Path) -> list:
@@ -942,6 +945,225 @@ def beautify_excel(
         return f"❌ 美化失败: {str(e)}"
 
 
+def merge_by_date(
+    target_date: str,
+    excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
+    keep_original: bool = False,
+) -> str:
+    """
+    按日期合并收据
+
+    将指定日期的所有收据合并成一张汇总表，删除原 Sheet。
+
+    Args:
+        target_date: 目标日期，格式如 "2026-2-26" 或 "2-26"
+        excel_path: Excel 文件路径
+        keep_original: 是否保留原 Sheet（默认 False，即删除原 Sheet）
+
+    Returns:
+        操作结果的格式化字符串
+
+    Example:
+        merge_by_date("2026-2-26")
+        merge_by_date("2-26")
+    """
+    try:
+        from openpyxl import load_workbook
+
+        excel_file = _normalize_path(excel_path)
+
+        if not excel_file.exists():
+            return f"❌ Excel 文件不存在: {excel_file}"
+
+        wb = load_workbook(str(excel_file))
+        handler = ExcelHandler(str(excel_file))
+
+        # 解析日期（支持 "2026-2-26" 或 "2-26" 格式）
+        import re
+        date_match = re.match(r'(\d{4})?-(\d{1,2})-(\d{1,2})', target_date)
+        if not date_match:
+            return f"❌ 日期格式错误: {target_date}，请使用 YYYY-M-D 或 M-D 格式"
+
+        year, month, day = date_match.groups()
+        if year is None:
+            year = date.today().year
+
+        # 标准化日期（补零）
+        target_year = int(year)
+        target_month = int(month)
+        target_day = int(day)
+
+        # 查找匹配日期的 Sheet（排除已有的汇总表）
+        matched_sheets = []
+        for sheet_name in wb.sheetnames:
+            # 排除包含"汇总"的 Sheet，避免重复合并
+            if "汇总" in sheet_name:
+                continue
+            receipt = handler.read_receipt(sheet_name)
+            if receipt and receipt.delivery_date:
+                if (receipt.delivery_date.year == target_year and
+                    receipt.delivery_date.month == target_month and
+                    receipt.delivery_date.day == target_day):
+                    matched_sheets.append((sheet_name, receipt))
+
+        handler.close()
+
+        if not matched_sheets:
+            return f"❌ 未找到日期为 {target_year}-{target_month:02d}-{target_day:02d} 的收据"
+
+        if len(matched_sheets) == 1:
+            return f"ℹ 该日期只有 1 张收据，无需合并\n  Sheet: {matched_sheets[0][0]}"
+
+        # 收集所有商品明细和图片
+        all_items = []
+        total_amount = 0
+        purchaser = "梁程程妈妈"
+        payment_method = "转账"
+        titles = []
+        sheet_images = []  # 收集每个 Sheet 的图片对象
+
+        for sheet_name, receipt in matched_sheets:
+            titles.append(receipt.title)
+            if receipt.purchaser:
+                purchaser = receipt.purchaser
+            if receipt.payment_method:
+                payment_method = receipt.payment_method
+
+            # 从 Sheet 中提取图片对象
+            ws = wb[sheet_name]
+            if hasattr(ws, '_images') and ws._images:
+                sheet_images.extend(ws._images)
+
+            for item in receipt.items:
+                all_items.append({
+                    "sequence": len(all_items) + 1,
+                    "name": item.name,
+                    "spec": item.spec,
+                    "unit": item.unit,
+                    "quantity": float(item.quantity),
+                    "unit_price": float(item.unit_price),
+                    "remark": item.remark,
+                })
+            total_amount += float(receipt.total_amount)
+
+        # 创建汇总收据数据（使用日期作为标题）
+        summary_date = date(target_year, target_month, target_day)
+        summary_title = f"{target_year}-{target_month}-{target_day}"  # 年-月-日格式
+        receipt_data = {
+            "title": summary_title,
+            "delivery_date": summary_date.isoformat(),
+            "purchaser": purchaser,
+            "payment_method": payment_method,
+            "items": all_items,
+        }
+
+        # 先保存汇总收据（不含图片，因为图片是从 Sheet 复制的）
+        save_receipt_to_excel(
+            receipt_data=receipt_data,
+            excel_path=str(excel_file),
+            image_path=None,  # 不通过 source_file 传图片
+        )
+
+        # 重新加载工作簿，获取汇总 Sheet 名称并插入图片
+        wb = load_workbook(str(excel_file))
+        summary_sheet_name = None
+        for name in wb.sheetnames:
+            if name.startswith(summary_title):
+                summary_sheet_name = name
+                break
+
+        if summary_sheet_name and sheet_images:
+            try:
+                ws = wb[summary_sheet_name]
+
+                # 找到表格最后一行（交付信息行之后）
+                last_row = ws.max_row
+                # 图片起始行（在表格内容之后）
+                image_row = last_row + 2
+
+                # 插入所有图片（横向排列）
+                for i, img in enumerate(sheet_images):
+                    try:
+                        # 设置图片大小（如果图片太大）
+                        max_width = 400  # 稍小一点以容纳多张图片
+                        if img.width > max_width:
+                            ratio = max_width / img.width
+                            # 创建新的图片对象（避免修改原图片）
+                            from copy import deepcopy
+                            new_img = deepcopy(img)
+                            new_img.width = max_width
+                            new_img.height = int(img.height * ratio)
+                        else:
+                            new_img = img
+
+                        # 计算图片位置（横向排列，每行2张）
+                        col_offset = (i % 2) * 6  # 间隔6列
+                        row_offset = (i // 2) * 25  # 每25行换行
+
+                        target_col = 1 + col_offset  # A列或G列
+                        target_row = image_row + row_offset
+
+                        new_img.anchor = f"{chr(64 + target_col)}{target_row}"
+                        ws.add_image(new_img)
+
+                    except Exception as img_e:
+                        logger.warning(f"插入第{i+1}张图片失败: {img_e}")
+
+                wb.save(str(excel_file))
+            except Exception as e:
+                logger.warning(f"插入图片失败: {e}")
+            finally:
+                wb.close()
+
+        # 重命名汇总表，去掉重复的日期后缀
+        wb = load_workbook(str(excel_file))
+        for name in wb.sheetnames:
+            if name.startswith(summary_title):
+                # 重命名为 "年-月-日" 格式，去掉多余的后缀
+                ws = wb[name]
+                ws.title = summary_title
+                break
+        wb.save(str(excel_file))
+        wb.close()
+
+        # 删除原 Sheet
+        if not keep_original:
+            wb = load_workbook(str(excel_file))
+            deleted_count = 0
+            for sheet_name, _ in matched_sheets:
+                if sheet_name in wb.sheetnames:
+                    wb.remove(wb[sheet_name])
+                    deleted_count += 1
+            wb.save(str(excel_file))
+            wb.close()
+
+            action = "已合并并删除"
+        else:
+            deleted_count = 0
+            action = "已合并（保留原表）"
+
+        # 格式化输出
+        lines = [
+            f"✓ 按日期合并完成",
+            f"  目标日期: {target_year}-{target_month:02d}-{target_day:02d}",
+            f"  合并数量: {len(matched_sheets)} 张收据",
+            f"  {action}: {deleted_count} 张原 Sheet",
+            f"  新 Sheet: {summary_title}",
+            f"  商品数量: {len(all_items)} 件",
+            f"  总金额: ¥{total_amount:.2f}",
+            f"",
+            f"  来源收据:",
+        ]
+        for sheet_name, receipt in matched_sheets:
+            lines.append(f"    • {sheet_name}: ¥{float(receipt.total_amount):.2f}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        import traceback
+        return f"❌ 合并失败: {str(e)}\n{traceback.format_exc()}"
+
+
 # 导出所有工具函数
 __all__ = [
     "save_receipt_to_excel",
@@ -954,4 +1176,5 @@ __all__ = [
     "rename_sheet",
     "rename_sheet_auto",
     "beautify_excel",
+    "merge_by_date",
 ]

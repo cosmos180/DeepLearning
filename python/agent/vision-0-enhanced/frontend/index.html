@@ -255,154 +255,169 @@
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <div id="status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs glass">
+        <div id="status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs glass"
+          style="display: none;">
           <div class="w-2 h-2 rounded-full bg-slate-500" id="status-dot"></div>
           <span id="status-text">就绪</span>
         </div>
-        <button onclick="resetProject()"
-          class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/10 transition-all">重置</button>
+        <button onclick="document.getElementById('new-project-modal').classList.remove('hidden')"
+          class="px-4 py-2 rounded-lg text-sm text-white bg-purple-600 hover:bg-purple-500 font-medium transition-all shadow-lg glow-purple">+
+          启动新项目</button>
       </div>
     </div>
   </header>
 
-  <div class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+  <div class="max-w-7xl mx-auto px-6 py-8 space-y-8 relative">
 
-    <!-- 入口卡片面板 -->
-    <div class="glass rounded-2xl p-6" id="entry-panel">
-      <h2 class="text-lg font-semibold text-white mb-6">选择入口</h2>
-      <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-emerald-500/40 border border-transparent transition-all"
-          onclick="openEntryModal('creator')">
-          <div class="text-4xl mb-3">🚀</div>
-          <h3 class="font-semibold text-white">一键制片</h3>
-          <p class="text-xs text-slate-400 mt-1">全流程自动</p>
-          <p class="text-[10px] text-slate-600 mt-2">输入种子 → 成片</p>
-        </div>
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-purple-500/40 border border-transparent transition-all"
-          onclick="openEditor('creator')">
-          <div class="text-4xl mb-3">✍️</div>
-          <h3 class="font-semibold text-white">创作</h3>
-          <p class="text-xs text-slate-400 mt-1">故事圣经</p>
-          <p class="text-[10px] text-slate-600 mt-2">进入创作工作台</p>
-        </div>
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-blue-500/40 border border-transparent transition-all"
-          onclick="openEntryModal('screenwriter')">
-          <div class="text-4xl mb-3">📝</div>
-          <h3 class="font-semibold text-white">编剧</h3>
-          <p class="text-xs text-slate-400 mt-1">撰写剧本</p>
-          <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
-        </div>
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-rose-500/40 border border-transparent transition-all"
-          onclick="openEditor('reviewer')">
-          <div class="text-4xl mb-3">🔍</div>
-          <h3 class="font-semibold text-white">剧本评审</h3>
-          <p class="text-xs text-slate-400 mt-1">临床诊断</p>
-          <p class="text-[10px] text-slate-600 mt-2">进入评审工作台</p>
-        </div>
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-pink-500/40 border border-transparent transition-all"
-          onclick="openEntryModal('art_director')">
-          <div class="text-4xl mb-3">🎨</div>
-          <h3 class="font-semibold text-white">艺术总监</h3>
-          <p class="text-xs text-slate-400 mt-1">视觉风格</p>
-          <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
-        </div>
-        <div
-          class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-amber-500/40 border border-transparent transition-all"
-          onclick="openEntryModal('director')">
-          <div class="text-4xl mb-3">🎬</div>
-          <h3 class="font-semibold text-white">导演</h3>
-          <p class="text-xs text-slate-400 mt-1">分镜Prompt</p>
-          <p class="text-[10px] text-slate-600 mt-2">仅执行导演步骤</p>
-        </div>
+    <!-- 我的作品集 Dashboard -->
+    <div id="projects-panel" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-white">我的作品库 <span class="text-slate-500 text-sm font-normal ml-2"
+            id="projects-count">(0)</span></h2>
       </div>
+      <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <p class="text-xs text-slate-500 py-8 col-span-full text-center">正在加载项目...</p>
+      </div>
+    </div>
 
-      <!-- 二级菜单：可观测性追踪 + 高级设置 -->
-      <div class="mt-6 pt-4 border-t border-white/10">
-        <details class="text-sm group">
-          <summary
-            class="cursor-pointer text-slate-400 font-medium hover:text-white transition-colors duration-200 outline-none flex items-center gap-2">
-            <span>📋</span>
-            <span>高级选项</span>
-            <svg class="w-4 h-4 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </summary>
-          <div class="mt-4 space-y-4">
-            <button onclick="loadAndShowTraces()"
-              class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all">
-              📊 可观测性追踪
-            </button>
-            <!-- AI 模型高级配置 -->
-            <div class="p-4 bg-white/5 border border-white/10 rounded-xl" id="model-config-panel">
-              <h4 class="text-xs text-slate-400 mb-3 font-medium">模型配置（全局默认）</h4>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1">✍️ 原著作者</label>
-                  <input type="text" id="model-creator" placeholder="默认"
-                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-                    list="model-suggestions" />
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1">📝 编剧</label>
-                  <input type="text" id="model-screenwriter" placeholder="默认"
-                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-                    list="model-suggestions" />
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1">🎨 艺术总监</label>
-                  <input type="text" id="model-art_director" placeholder="默认"
-                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-                    list="model-suggestions" />
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1">🔍 剧本评审</label>
-                  <input type="text" id="model-reviewer" placeholder="默认"
-                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-                    list="model-suggestions" />
-                </div>
-                <div>
-                  <label class="block text-xs text-slate-500 mb-1">🎬 导演</label>
-                  <input type="text" id="model-director" placeholder="默认"
-                    class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
-                    list="model-suggestions" />
-                </div>
-              </div>
-              <datalist id="model-suggestions">
-                <option value="anthropic/claude-3.5-sonnet"></option>
-                <option value="openai/gpt-4o"></option>
-                <option value="openai/gpt-4o-mini"></option>
-                <option value="meta-llama/llama-3-70b-instruct"></option>
-                <option value="google/gemini-2.5-pro"></option>
-                <option value="deepseek/deepseek-chat"></option>
-              </datalist>
-            </div>
+    <!-- 入口卡片面板 (原页面展示，现改为新建项目选择模态框) -->
+    <div id="new-project-modal" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+      <div class="glass rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 relative">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg font-semibold text-white">选择启动模式</h2>
+          <button onclick="document.getElementById('new-project-modal').classList.add('hidden')"
+            class="text-slate-400 hover:text-white text-xl">×</button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-emerald-500/40 border border-transparent transition-all"
+            onclick="openEntryModal('creator')">
+            <div class="text-4xl mb-3">🚀</div>
+            <h3 class="font-semibold text-white">一键制片</h3>
+            <p class="text-xs text-slate-400 mt-1">全流程自动</p>
+            <p class="text-[10px] text-slate-600 mt-2">输入种子 → 成片</p>
           </div>
-        </details>
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-purple-500/40 border border-transparent transition-all"
+            onclick="openEditor('creator')">
+            <div class="text-4xl mb-3">✍️</div>
+            <h3 class="font-semibold text-white">创作</h3>
+            <p class="text-xs text-slate-400 mt-1">故事圣经</p>
+            <p class="text-[10px] text-slate-600 mt-2">进入创作工作台</p>
+          </div>
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-blue-500/40 border border-transparent transition-all"
+            onclick="openEntryModal('screenwriter')">
+            <div class="text-4xl mb-3">📝</div>
+            <h3 class="font-semibold text-white">编剧</h3>
+            <p class="text-xs text-slate-400 mt-1">撰写剧本</p>
+            <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
+          </div>
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-rose-500/40 border border-transparent transition-all"
+            onclick="openEditor('reviewer')">
+            <div class="text-4xl mb-3">🔍</div>
+            <h3 class="font-semibold text-white">剧本评审</h3>
+            <p class="text-xs text-slate-400 mt-1">临床诊断</p>
+            <p class="text-[10px] text-slate-600 mt-2">进入评审工作台</p>
+          </div>
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-pink-500/40 border border-transparent transition-all"
+            onclick="openEntryModal('art_director')">
+            <div class="text-4xl mb-3">🎨</div>
+            <h3 class="font-semibold text-white">艺术总监</h3>
+            <p class="text-xs text-slate-400 mt-1">视觉风格</p>
+            <p class="text-[10px] text-slate-600 mt-2">跳过创作步骤</p>
+          </div>
+          <div
+            class="entry-card glass rounded-2xl p-6 cursor-pointer hover:border-amber-500/40 border border-transparent transition-all"
+            onclick="openEntryModal('director')">
+            <div class="text-4xl mb-3">🎬</div>
+            <h3 class="font-semibold text-white">导演</h3>
+            <p class="text-xs text-slate-400 mt-1">分镜Prompt</p>
+            <p class="text-[10px] text-slate-600 mt-2">仅执行导演步骤</p>
+          </div>
+        </div>
+
+        <!-- 二级菜单：可观测性追踪 + 高级设置 -->
+        <div class="mt-6 pt-4 border-t border-white/10">
+          <details class="text-sm group">
+            <summary
+              class="cursor-pointer text-slate-400 font-medium hover:text-white transition-colors duration-200 outline-none flex items-center gap-2">
+              <span>📋</span>
+              <span>高级选项</span>
+              <svg class="w-4 h-4 transform group-open:rotate-180 transition-transform" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </summary>
+            <div class="mt-4 space-y-4">
+              <button onclick="loadAndShowTraces()"
+                class="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-all">
+                📊 可观测性追踪
+              </button>
+              <!-- AI 模型高级配置 -->
+              <div class="p-4 bg-white/5 border border-white/10 rounded-xl" id="model-config-panel">
+                <h4 class="text-xs text-slate-400 mb-3 font-medium">模型配置（全局默认）</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">✍️ 原著作者</label>
+                    <input type="text" id="model-creator" placeholder="默认"
+                      class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                      list="model-suggestions" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">📝 编剧</label>
+                    <input type="text" id="model-screenwriter" placeholder="默认"
+                      class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                      list="model-suggestions" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">🎨 艺术总监</label>
+                    <input type="text" id="model-art_director" placeholder="默认"
+                      class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                      list="model-suggestions" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">🔍 剧本评审</label>
+                    <input type="text" id="model-reviewer" placeholder="默认"
+                      class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                      list="model-suggestions" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">🎬 导演</label>
+                    <input type="text" id="model-director" placeholder="默认"
+                      class="w-full bg-black/30 border border-white/5 text-slate-300 rounded px-2 py-1.5 focus:border-purple-500/50 outline-none text-xs"
+                      list="model-suggestions" />
+                  </div>
+                </div>
+                <datalist id="model-suggestions">
+                  <option value="anthropic/claude-3.5-sonnet"></option>
+                  <option value="openai/gpt-4o"></option>
+                  <option value="openai/gpt-4o-mini"></option>
+                  <option value="meta-llama/llama-3-70b-instruct"></option>
+                  <option value="google/gemini-2.5-pro"></option>
+                  <option value="deepseek/deepseek-chat"></option>
+                </datalist>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
     </div>
 
-    <!-- 工作流进度 -->
-    <div id="workflow-panel" class="hidden">
-      <h2 class="text-lg font-semibold text-white mb-4">工作流进度</h2>
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="agent-cards">
-        <!-- 动态生成 -->
-      </div>
-    </div>
-
-    <!-- 最新作品记录 -->
-    <div id="latest-work-panel" class="hidden">
+    <!-- 悬浮工作流进度 (修改为左下角悬浮窗以不干扰 Dashboard) -->
+    <div id="workflow-panel"
+      class="hidden fixed bottom-6 right-6 z-40 w-96 glass rounded-2xl p-5 shadow-2xl border border-white/10 transition-all transform origin-bottom-right">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-white">最新作品</h2>
-        <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse" style="display:none"></div>
+        <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+          <div class="pulse-dot w-2 h-2 rounded-full bg-purple-400" id="log-pulse"></div>当前执行进度
+        </h2>
+        <button onclick="document.getElementById('workflow-panel').classList.add('hidden')"
+          class="text-slate-400 hover:text-white text-lg">×</button>
       </div>
-      <div id="latest-work-content" class="glass rounded-2xl p-5">
-        <p class="text-xs text-slate-500 text-center py-4">作品完成后将在此展示...</p>
+      <div class="space-y-3" id="agent-cards">
+        <!-- 动态生成: 简化版 agent 卡片以适应小窗 -->
       </div>
     </div>
 
@@ -580,6 +595,7 @@
     }
 
     function openEntryModal(type) {
+      document.getElementById('new-project-modal').classList.add('hidden'); // 先隐藏入口选择框
       currentEntryType = type;
       const config = ENTRY_CONFIGS[type];
       if (!config) return;
@@ -636,6 +652,45 @@
         }
       });
 
+      // 添加模型配置区
+      const agentModelHtml = `
+        <div class="mt-6 pt-6 border-t border-white/10">
+          <h4 class="text-white text-sm mb-4 font-medium flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-purple-400" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            专家团队引擎配置
+          </h4>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label class="text-xs text-slate-400 block">原著作者 (Creator)</label>
+              <select id="entry-model-creator" class="w-full bg-slate-800/50 border border-slate-700/50 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors">
+                <!-- 模型选项将通过 JS 动态填充 -->
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-slate-400 block">金牌编剧 (Screenwriter)</label>
+              <select id="entry-model-screenwriter" class="w-full bg-slate-800/50 border border-slate-700/50 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors">
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-slate-400 block">剧本评审 (Reviewer)</label>
+              <select id="entry-model-reviewer" class="w-full bg-slate-800/50 border border-slate-700/50 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors">
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-slate-400 block">艺术总监 (Art Director)</label>
+              <select id="entry-model-art-director" class="w-full bg-slate-800/50 border border-slate-700/50 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors">
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-slate-400 block">分镜导演 (Director)</label>
+              <select id="entry-model-director" class="w-full bg-slate-800/50 border border-slate-700/50 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500/50 transition-colors">
+              </select>
+            </div>
+          </div>
+        </div>
+      `;
+      formHtml += agentModelHtml;
+
       // 快速示例（仅创作入口）
       if (type === 'creator') {
         formHtml += `
@@ -649,6 +704,31 @@
 
       document.getElementById('entry-modal-content').innerHTML = formHtml;
       document.getElementById('entry-modal').classList.remove('hidden');
+
+      // 填充模型选项
+      fillModelOptions();
+    }
+
+    // 将全局模型填充到表单
+    function fillModelOptions() {
+      if (!window.availableModels || window.availableModels.length === 0) return;
+
+      const agents = ['creator', 'screenwriter', 'reviewer', 'art-director', 'director'];
+      agents.forEach(agent => {
+        const select = document.getElementById(`entry-model-${agent}`);
+        if (select) {
+          select.innerHTML = '<option value="">默认引擎 (Fast/Default)</option>';
+          window.availableModels.forEach(m => {
+            select.innerHTML += `<option value="${m.value}">${m.label}</option>`;
+          });
+
+          // 如果有先前保存的选择，恢复它
+          const savedModel = localStorage.getItem(`vo_model_${agent}`);
+          if (savedModel) {
+            select.value = savedModel;
+          }
+        }
+      });
     }
 
     function closeEntryModal() {
@@ -729,14 +809,21 @@
 
       // 获取全局模型配置
       const agentModels = {};
-      ['creator', 'screenwriter', 'art_director', 'reviewer', 'director'].forEach(agent => {
-        const modelInput = document.getElementById(`model-${agent}`);
+      ['creator', 'screenwriter', 'reviewer', 'art-director', 'director'].forEach(agent => {
+        const modelInput = document.getElementById(`entry-model-${agent}`);
         if (modelInput && modelInput.value.trim()) {
-          agentModels[agent] = modelInput.value.trim();
+          // 由于配置文件的键使用了下划线例如 art_director，需要转换
+          const key = agent.replace('-', '_');
+          agentModels[key] = modelInput.value.trim();
+          // 保存用户的模型选择到 LocalStorage
+          localStorage.setItem(`vo_model_${agent}`, modelInput.value.trim());
+        } else {
+          // 清除保存的选择
+          localStorage.removeItem(`vo_model_${agent}`);
         }
       });
 
-      // 收集选中的流行元素
+      // 组装额外参数收集选中的流行元素
       const popularElements = getSelectedElements();
       // 存储到 localStorage 供编辑器使用
       localStorage.setItem('popularElements', JSON.stringify(popularElements));
@@ -773,9 +860,14 @@
           btn.textContent = '开始执行';
           return;
         }
+
+        const resData = await res.json();
         closeEntryModal();
-        showWorkflowUI();
-        connectSSE();
+        // showWorkflowUI 用悬浮条展示
+        const currentRunningProjectId = resData.project_id;
+        showWorkflowUI(currentRunningProjectId);
+        await fetchAndRenderProjects(); // 刷新项目列表
+        connectSSE(currentRunningProjectId);
       } catch (e) {
         alert('连接服务器失败，请确认后端已启动');
         btn.disabled = false;
@@ -784,172 +876,262 @@
     }
 
     async function resetProject() {
-      if (!confirm('确认重置？所有数据将被清空。')) return;
-      if (eventSource) { eventSource.close(); eventSource = null; }
-      await fetch(`${API}/api/project/reset`, { method: 'POST' });
-      location.reload();
+      // no-op 或移除
     }
 
-    function showWorkflowUI() {
-      document.getElementById('entry-panel').classList.add('hidden');
+    function showWorkflowUI(projectId) {
       document.getElementById('workflow-panel').classList.remove('hidden');
-      document.getElementById('latest-work-panel').classList.remove('hidden');
       document.getElementById('log-pulse').style.display = 'block';
-      renderAgentCards({});
+      // Initialize simplified agent cards layout
+      createAgentCards();
+      updateAgentCards({});
     }
 
-    function connectSSE() {
+    function connectSSE(projectId = '') {
       if (eventSource) eventSource.close();
-      eventSource = new EventSource(`${API}/api/events`);
+      const url = projectId ? `${API}/api/events?project_id=${projectId}` : `${API}/api/events`;
+      eventSource = new EventSource(url);
 
-      eventSource.addEventListener('init', e => handleUpdate(JSON.parse(e.data)));
-      eventSource.addEventListener('update', e => handleUpdate(JSON.parse(e.data)));
+      eventSource.addEventListener('init', e => handleUpdate(JSON.parse(e.data), projectId));
+      eventSource.addEventListener('update', e => handleUpdate(JSON.parse(e.data), projectId));
+      eventSource.addEventListener('stream', e => handleStream(JSON.parse(e.data)));
       eventSource.addEventListener('heartbeat', () => { });
       eventSource.onerror = () => {
-        setTimeout(connectSSE, 3000);
+        setTimeout(() => connectSSE(projectId), 3000);
       };
     }
 
-    function handleUpdate(data) {
-      if (data.workflow) updateStatus(data.workflow);
+    function handleUpdate(data, projectId) {
+      if (data.workflow) updateStatus(data.workflow, projectId);
       if (data.artifacts) {
         currentArtifacts = data.artifacts;
-        updateAgentCardsFromLogs(data.logs || []);
-        // 如果已完成，渲染最新作品
-        if (data.workflow && data.workflow.status === 'completed') {
-          renderLatestWork(data.artifacts, data.workflow);
+        updateAgentCardsFromLogs(data.logs || [], projectId);
+        // 如果状态刷新了，后台更新 Dashboard List
+        if (data.workflow && (data.workflow.status === 'completed' || data.workflow.status === 'failed')) {
+          fetchAndRenderProjects();
         }
       }
     }
 
-    function updateStatus(workflow) {
+    function updateStatus(workflow, projectId) {
       if (!workflow) return;
-      const dot = document.getElementById('status-dot');
-      const text = document.getElementById('status-text');
       const step = workflow.current_step || '';
 
-      const statusMap = {
-        running: { color: 'bg-purple-400', text: step || '运行中' },
-        completed: { color: 'bg-green-400', text: '制作完成 🎉' },
-        failed: { color: 'bg-red-400', text: '执行失败' },
-        idle: { color: 'bg-slate-500', text: '就绪' },
-      };
-      const s = statusMap[workflow.status] || statusMap.idle;
-      dot.className = `w-2 h-2 rounded-full ${s.color}`;
-      text.textContent = s.text;
+      // Update DOM for the given project in the grid if exists
+      const idPrefix = projectId || workflow.project_id;
+      if (idPrefix) {
+        const statusEl = document.getElementById(`status-text-${idPrefix}`);
+        const dotEl = document.getElementById(`status-dot-${idPrefix}`);
+        if (statusEl && dotEl) {
+          const statusMap = {
+            running: { color: 'bg-purple-400', text: step || '运行中' },
+            completed: { color: 'bg-green-400', text: '已完成' },
+            failed: { color: 'bg-red-400', text: '执行失败' },
+            idle: { color: 'bg-slate-500', text: '就绪' },
+          };
+          const s = statusMap[workflow.status] || statusMap.idle;
+          statusEl.textContent = s.text;
+          dotEl.className = `w-1.5 h-1.5 rounded-full ${s.color}`;
+        }
+      }
 
       if (workflow.status === 'completed') {
         document.getElementById('log-pulse').style.display = 'none';
+        setTimeout(() => {
+          document.getElementById('workflow-panel').classList.add('hidden');
+        }, 5000);
       }
     }
 
-    function renderLatestWork(artifacts, workflow) {
-      const container = document.getElementById('latest-work-content');
-      const entries = Object.entries(artifacts);
-      if (entries.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">暂无作品数据</p>';
-        return;
-      }
-
-      // 显示作品信息摘要
-      const seed = workflow.seed || '未知创意';
-      const style = workflow.style || '未知风格';
-      const duration = workflow.target_duration || '未知时长';
-
-      let html = `
-        <div class="mb-4 pb-4 border-b border-white/10">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-purple-400">💡</span>
-            <span class="text-sm font-medium text-white">创意种子</span>
-          </div>
-          <p class="text-xs text-slate-400">${seed}</p>
-          <div class="flex gap-4 mt-2 text-xs text-slate-500">
-            <span>📁 ${duration}</span>
-            <span>🎨 ${style}</span>
-          </div>
-        </div>
-        <div class="mb-4">
-          <h4 class="text-sm font-medium text-white mb-3">产出物清单</h4>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-      `;
-
-      entries.forEach(([type, info]) => {
-        const meta = ARTIFACT_LABELS[type] || { label: type, icon: '📄', color: 'slate' };
-        const colorMap = {
-          purple: 'border-purple-500/30 hover:border-purple-500/60',
-          blue: 'border-blue-500/30 hover:border-blue-500/60',
-          indigo: 'border-indigo-500/30 hover:border-indigo-500/60',
-          violet: 'border-violet-500/30 hover:border-violet-500/60',
-          rose: 'border-rose-500/30 hover:border-rose-500/60',
-          amber: 'border-amber-500/30 hover:border-amber-500/60',
-          green: 'border-green-500/30 hover:border-green-500/60',
-          teal: 'border-teal-500/30 hover:border-teal-500/60',
-          pink: 'border-pink-500/30 hover:border-pink-500/60',
-          slate: 'border-slate-500/30 hover:border-slate-500/60',
-        };
-        const borderCls = colorMap[meta.color] || colorMap.slate;
-        const chars = info.length || 0;
-
-        html += `
-          <div class="artifact-card glass rounded-xl p-3 cursor-pointer border ${borderCls}"
-              onclick="openArtifact('${type}', '${meta.label}')">
-            <div class="text-lg mb-1">${meta.icon}</div>
-            <div class="font-medium text-xs text-white mb-1">${meta.label}</div>
-            <div class="text-[10px] text-slate-500">${chars.toLocaleString()} 字符</div>
-          </div>`;
-      });
-
-      html += `
-          </div>
-        </div>
-        <div class="text-xs text-slate-500 text-center">
-          点击卡片查看详细内容
-        </div>
-      `;
-
-      container.innerHTML = html;
-    }
-
-    function renderAgentCards(agentStatuses) {
+    function createAgentCards() {
       const container = document.getElementById('agent-cards');
-      container.innerHTML = AGENTS.map(a => {
-        const st = agentStatuses[a.id] || 'idle';
-        let cls = 'idle', statusText = '等待中', dotCls = 'bg-slate-600';
-        if (st === 'thinking') { cls = 'active'; statusText = '工作中...'; dotCls = 'bg-purple-400 pulse-dot'; }
-        else if (st === 'reflecting') { cls = 'reflecting'; statusText = '反思中...'; dotCls = 'bg-yellow-400 pulse-dot'; }
-        else if (st === 'completed') { cls = 'completed'; statusText = '已完成'; dotCls = 'bg-green-400'; }
-        else if (st === 'failed') { cls = ''; statusText = '失败'; dotCls = 'bg-red-400'; }
-
-        const isClickable = ['creator', 'reviewer', 'screenwriter'].includes(a.id);
-        const clickableCls = isClickable ? 'cursor-pointer hover:border-purple-500/40 hover:-translate-y-1 transition-all' : '';
-        const onclickAttr = isClickable ? `onclick="openEditor('${a.id === 'screenwriter' ? 'creator' : a.id}')"` : '';
-
-        return `<div class="agent-card glass rounded-xl p-4 ${cls} ${clickableCls}" ${onclickAttr}>
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-xl">${a.icon}</span>
-        <div class="w-2 h-2 rounded-full ${dotCls}"></div>
-      </div>
-      <div class="font-medium text-sm text-white">${a.name}</div>
-      <div class="text-xs text-slate-400 mt-1">${a.desc}</div>
-      <div class="text-xs text-slate-500 mt-2 flex justify-between items-center">
-        <span>${statusText}</span>
-        ${isClickable && st === 'completed' ? '<span class="text-[10px] text-purple-400">点击进入工作台</span>' : ''}
-      </div>
-    </div>`;
-      }).join('');
+      if (!container.innerHTML.trim()) {
+        container.innerHTML = AGENTS.map(a => {
+          return `<div id="agent-card-${a.id}" class="bg-black/20 rounded-lg p-2.5 flex flex-col transition-all border border-white/5 idle">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-base">${a.icon}</span>
+                <div>
+                  <div class="font-medium text-xs text-white">${a.name}</div>
+                  <div id="agent-status-text-${a.id}" class="text-[10px] text-slate-400 mt-0.5">等待中</div>
+                </div>
+              </div>
+              <div id="agent-dot-${a.id}" class="w-1.5 h-1.5 rounded-full bg-slate-600"></div>
+            </div>
+            <div id="stream-${a.id}" class="hidden mt-2 p-2 bg-slate-900/50 rounded border border-white/5 text-[10px] text-green-400 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto break-all tracking-wide shadow-inner shadow-black/50"></div>
+          </div>`;
+        }).join('');
+      }
     }
 
-    function updateAgentCardsFromLogs(logs) {
+    function updateAgentCards(agentStatuses) {
+      AGENTS.forEach(a => {
+        const st = agentStatuses[a.id] || 'idle';
+        const cardEl = document.getElementById(`agent-card-${a.id}`);
+        const textEl = document.getElementById(`agent-status-text-${a.id}`);
+        const dotEl = document.getElementById(`agent-dot-${a.id}`);
+        const streamEl = document.getElementById(`stream-${a.id}`);
+
+        if (!cardEl || !textEl || !dotEl) return;
+
+        cardEl.className = `bg-black/20 rounded-lg p-2.5 flex flex-col transition-all border border-white/5`;
+
+        let statusText = '等待中', dotCls = 'bg-slate-600', cardCls = 'idle';
+        if (st === 'thinking') { cardCls = 'active border-purple-500/50'; statusText = '工作中...'; dotCls = 'bg-purple-400 pulse-dot'; }
+        else if (st === 'reflecting') { cardCls = 'reflecting border-yellow-500/50'; statusText = '反思中...'; dotCls = 'bg-yellow-400 pulse-dot'; }
+        else if (st === 'completed') { cardCls = 'completed border-green-500/50'; statusText = '已完成'; dotCls = 'bg-green-400'; }
+        else if (st === 'failed') { cardCls = 'border-red-500/50'; statusText = '失败'; dotCls = 'bg-red-400'; }
+
+        if (cardCls) cardEl.classList.add(...cardCls.split(' '));
+        textEl.textContent = statusText;
+        dotEl.className = `w-1.5 h-1.5 rounded-full ${dotCls}`;
+
+        if (st === 'idle' || st === 'failed') {
+          if (streamEl) {
+            streamEl.classList.add('hidden');
+            streamEl.textContent = '';
+          }
+          if (_streamBuffers) _streamBuffers[a.id] = '';
+        } else if (st === 'completed') {
+          if (streamEl) {
+            streamEl.classList.add('opacity-50'); // Dim it when done
+          }
+        }
+      });
+    }
+
+    const _streamBuffers = {};
+    const agentNameMap = {
+      '原著作者': 'creator', '编剧': 'screenwriter',
+      '艺术总监': 'art_director', '剧本评审': 'reviewer', '导演': 'director',
+    };
+
+    function handleStream(data) {
+      if (!data || !data.agent || !data.chunk) return;
+      const agentId = agentNameMap[data.agent];
+      if (!agentId) return;
+
+      const streamEl = document.getElementById(`stream-${agentId}`);
+      if (streamEl) {
+        streamEl.classList.remove('hidden');
+        streamEl.classList.remove('opacity-50');
+        if (!_streamBuffers[agentId]) _streamBuffers[agentId] = "";
+        _streamBuffers[agentId] += data.chunk;
+
+        streamEl.textContent = _streamBuffers[agentId];
+        streamEl.scrollTop = streamEl.scrollHeight;
+      }
+    }
+
+    function updateAgentCardsFromLogs(logs, projectId) {
+      if (!logs) return;
       const agentStatuses = {};
-      const agentNameMap = {
-        '原著作者': 'creator', '编剧': 'screenwriter',
-        '艺术总监': 'art_director', '剧本评审': 'reviewer', '导演': 'director',
-      };
       logs.forEach(log => {
         const id = agentNameMap[log.agent];
         if (id) agentStatuses[id] = log.status;
       });
-      renderAgentCards(agentStatuses);
+      createAgentCards(); // Ensure DOM is ready safely
+      updateAgentCards(agentStatuses);
+    }
+
+    async function fetchAndRenderProjects() {
+      try {
+        const res = await fetch(`${API}/api/projects`);
+        const data = await res.json();
+        const projects = data.projects || [];
+
+        document.getElementById('projects-count').textContent = `(${projects.length})`;
+
+        const grid = document.getElementById('projects-grid');
+        if (projects.length === 0) {
+          grid.innerHTML = '<div class="col-span-full py-16 flex flex-col items-center justify-center text-center"><div class="text-4xl mb-4 opacity-50">📁</div><h3 class="text-slate-300 font-medium mb-1">还没有任何作品</h3><p class="text-xs text-slate-500 max-w-sm">点击右上角的"+ 启动新项目"按钮，开始你的AI影视创作之旅吧。</p></div>';
+          return;
+        }
+
+        grid.innerHTML = projects.map(p => {
+          const isRunning = p.status === 'running';
+          const dotCls = isRunning ? 'bg-purple-400 pulse-dot' :
+            (p.status === 'completed' ? 'bg-green-400' :
+              (p.status === 'failed' ? 'bg-red-400' : 'bg-slate-500'));
+          const statusText = isRunning ? (p.current_step || '运行中') :
+            (p.status === 'completed' ? '已完成' :
+              (p.status === 'failed' ? '失败' : '未知'));
+
+          const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '刚刚';
+
+          return `
+            <div class="project-card group relative bg-[#151522] rounded-2xl overflow-hidden cursor-pointer hover:-translate-y-1 transition-all duration-300 border border-white/5 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.15)] flex flex-col" data-project-id="${p.project_id}">
+              <div class="h-32 bg-gradient-to-br from-purple-900/20 to-blue-900/10 relative p-5 flex flex-col justify-between overflow-hidden">
+                <div class="absolute -right-6 -top-6 text-6xl opacity-[0.03] group-hover:scale-110 transition-transform">🎬</div>
+                <!-- Top row: 左侧时长标签，右侧状态和删除按钮 -->
+                <div class="flex items-center justify-between z-10">
+                  <span class="text-[10px] px-2 py-1 rounded-full bg-black/40 text-slate-300 border border-white/10 backdrop-blur-sm shadow-sm">${p.target_duration || '默认时长'}</span>
+                  <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/40 text-[10px] text-slate-300 border border-white/10 backdrop-blur-sm">
+                      <div id="status-dot-${p.project_id}" class="w-1.5 h-1.5 rounded-full ${dotCls}"></div>
+                      <span id="status-text-${p.project_id}">${statusText}</span>
+                    </div>
+                    <button type="button" class="delete-btn text-slate-400 hover:text-red-400 transition-all p-1 bg-black/40 hover:bg-black/60 rounded border border-white/10 backdrop-blur-sm" title="删除项目" data-delete-id="${p.project_id}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                  </div>
+                </div>
+                <h3 class="font-medium text-white text-[15px] leading-tight mt-auto z-10 w-[95%] truncate">${p.title || p.seed || '未命名项目'}</h3>
+              </div>
+              ${p.status === 'failed' && p.error_msg ? `
+                <div class="px-4 py-2 bg-red-500/10 border-b border-red-500/10 text-[11px] text-red-400" title="${p.error_msg}">
+                  <div class="flex items-start gap-1.5">
+                    <span class="mt-0.5">⚠️</span>
+                    <span class="line-clamp-2 opacity-90">${p.error_msg}</span>
+                  </div>
+                </div>
+              ` : ''}
+              <div class="p-4 flex flex-col gap-3 flex-1">
+                <div class="flex items-start gap-2 text-xs text-slate-400">
+                  <span class="opacity-60 mt-0.5">📖</span>
+                  <div class="line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.4;">${p.summary || p.seed || '暂无简介...'}</div>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-400 truncate mt-auto">
+                  <span class="opacity-60">🎨</span>
+                  <span class="truncate">${p.style || '默认风格'}</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-white/[0.03]">
+                   <span class="text-[10px] text-slate-500">${dateStr}</span>
+                   <span class="text-xs text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">进入工作台 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                </div>
+              </div>
+            </div>
+           `;
+        }).join('');
+      } catch (e) {
+        console.error("加载项目列表失败: ", e);
+      }
+    }
+
+    async function deleteProject(projectId) {
+      const confirmed = confirm("确定要删除此项目的所有数据吗？这个操作无法撤销。");
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/api/project/${projectId}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        const data = await res.json();
+        if (data.status === 'success') {
+          // 删除成功后刷新列表
+          await fetchAndRenderProjects();
+        } else {
+          alert('删除失败: ' + (data.message || '未知错误'));
+        }
+      } catch (e) {
+        console.error("删除项目失败", e);
+        alert('删除请求失败，请检查网络和后端: ' + e.message);
+      }
     }
 
     async function openArtifact(type, label) {
@@ -1052,17 +1234,74 @@
       if (e.target === document.getElementById('traces-modal')) closeTracesModal();
     });
 
-    // 页面加载时检查状态
-    window.addEventListener('load', async () => {
+    window.availableModels = [];
+
+    // 预设的 OpenRouter 模型列表
+    const OPENROUTER_MODELS = [
+      { value: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2' },
+      { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1' },
+      { value: 'openai/gpt-5.4-chat', label: 'OpenAI GPT-5.4' },
+      { value: 'google/gemini-3.1-flash-lite-preview', label: 'Google Gemini Flash' },
+      { value: 'anthropic/claude-opus-4.6', label: 'Anthropic Claude Opus 4.6' },
+      { value: 'qwen/qwen3.5-flash-02-23', label: 'Qwen 3.5 Flash' },
+    ];
+
+    async function fetchAndStoreModels() {
+      // 默认先加载 OpenRouter 模型
+      window.availableModels = [...OPENROUTER_MODELS];
+
       try {
-        const res = await fetch(`${API}/api/state`);
+        const res = await fetch(`${API}/api/cherry/models`);
         const data = await res.json();
-        if (data.workflow && ['running', 'completed'].includes(data.workflow.status)) {
-          showWorkflowUI();
-          handleUpdate(data);
-          if (data.workflow.status === 'running') connectSSE();
+        if (data.models && data.models.length > 0) {
+          // Cherry Studio 不支持 openrouter: 前缀的模型，需要过滤掉
+          const cherryModels = data.models.filter(m => !m.value.startsWith('openrouter:'));
+
+          // 如果 Cherry Studio 有模型，标记一下来源以示区分并增加 cherry/ 前缀
+          const formattedCherryModels = cherryModels.map(m => ({
+            value: `cherry/${m.value}`,
+            label: `[本地 Cherry] ${m.label}`
+          }));
+
+          window.availableModels = [...window.availableModels, ...formattedCherryModels];
         }
-      } catch (e) { }
+      } catch (e) {
+        console.error('获取 Cherry 引擎模型失败:', e);
+      }
+    }
+
+    // 事件委托处理项目卡片点击和删除按钮（放在所有函数定义之后）
+    document.addEventListener('click', function(e) {
+      // 检查是否是删除按钮
+      const deleteBtn = e.target.closest('.delete-btn');
+      if (deleteBtn) {
+        console.log('[DEBUG] 删除按钮被点击', deleteBtn);
+        e.preventDefault();
+        e.stopPropagation();
+        const projectId = deleteBtn.getAttribute('data-delete-id');
+        console.log('[DEBUG] projectId:', projectId, 'deleteProject 函数:', typeof deleteProject);
+        if (projectId) {
+          deleteProject(projectId);
+        }
+        return;
+      }
+
+      // 检查是否是项目卡片（用于跳转）
+      const card = e.target.closest('.project-card');
+      if (card) {
+        const projectId = card.getAttribute('data-project-id');
+        if (projectId) {
+          window.location.href = 'editor.html?project_id=' + projectId;
+        }
+      }
+    });
+
+    // 页面加载时并行拉取列表和订阅事件
+    window.addEventListener('load', () => {
+      // 并行执行，提高加载速度
+      fetchAndStoreModels();
+      fetchAndRenderProjects();
+      connectSSE();
     });
   </script>
 </body>

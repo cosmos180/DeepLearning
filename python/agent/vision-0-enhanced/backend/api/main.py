@@ -55,11 +55,14 @@ app.add_middleware(
 # 静态文件目录
 FRONTEND_PATH = Path(__file__).parent.parent.parent / "frontend"
 
+import uuid
+
 # 全局任务追踪
-_running_task: Optional[asyncio.Task] = None
+_running_tasks: dict[str, asyncio.Task] = {}
 
 
 class ProjectRequest(BaseModel):
+    project_id: Optional[str] = None
     seed: str = ""
     target_duration: str = "30分钟短片"
     style: str = "科幻+温情"
@@ -74,12 +77,14 @@ class ProjectRequest(BaseModel):
 @app.post("/api/project/start")
 async def start_project(req: ProjectRequest):
     """启动新的影视项目工作流"""
-    global _running_task
+    global _running_tasks
 
-    # 检查是否已有任务在运行
-    state = await blackboard.get_workflow_state("default")
-    if state and state.get("status") == WorkflowStatus.RUNNING.value:
-        raise HTTPException(status_code=409, detail="已有项目正在运行，请等待完成或重置")
+    project_id = req.project_id or str(uuid.uuid4())
+
+    # 检查当前项目是否在运行
+    state = await blackboard.get_workflow_state(project_id)
+    if state and state.get("status") == WorkflowStatus.RUNNING.value and project_id in _running_tasks and not _running_tasks[project_id].done():
+        raise HTTPException(status_code=409, detail=f"项目 {project_id} 正在运行，请等待完成或重置")
 
     # 验证：如果是从头开始，必须有 seed
     if req.start_from_step is None and not req.seed:
@@ -87,6 +92,7 @@ async def start_project(req: ProjectRequest):
 
     async def run_workflow():
         orch = Orchestrator(blackboard)
+        orch.project_id = project_id
         try:
             await orch.run(
                 seed=req.seed,
@@ -98,22 +104,23 @@ async def start_project(req: ProjectRequest):
                 artifacts=req.artifacts
             )
         except Exception as e:
-            print(f"工作流异常: {e}")
+            print(f"工作流异常 [{project_id}]: {e}")
 
-    _running_task = asyncio.create_task(run_workflow())
+    _running_tasks[project_id] = asyncio.create_task(run_workflow())
 
     step_info = f"，从步骤 [{req.start_from_step}] 开始" if req.start_from_step else ""
-    return {"status": "started", "message": f"项目已启动{step_info}"}
+    return {"status": "started", "project_id": project_id, "message": f"项目 {project_id} 已启动{step_info}"}
 
 
-@app.post("/api/project/reset")
-async def reset_project():
+@app.post("/api/project/{project_id}/reset")
+async def reset_project(project_id: str):
     """重置项目，清空所有数据"""
-    global _running_task
-    if _running_task and not _running_task.done():
-        _running_task.cancel()
-    await blackboard.clear_all()
-    return {"status": "reset", "message": "项目已重置"}
+    global _running_tasks
+    task = _running_tasks.get(project_id)
+    if task and not task.done():
+        task.cancel()
+    await blackboard.delete_project(project_id)
+    return {"status": "reset", "message": f"项目 {project_id} 已重置"}
 
 
 # ─── 模型查询 ─────────────────────────────────────────────────────────────────
@@ -127,12 +134,32 @@ async def get_cherry_models_api():
 
 # ─── 状态查询 ─────────────────────────────────────────────────────────────────
 
-@app.get("/api/state")
-async def get_state():
-    """获取当前工作流状态"""
-    state = await blackboard.get_workflow_state("default")
-    logs = await blackboard.get_agent_logs(limit=30)
-    artifacts = await blackboard.read_all()
+@app.get("/api/projects")
+async def get_projects():
+    """获取所有项目列表"""
+    try:
+        from backend.core.blackboard import blackboard
+        projects = await blackboard.get_all_projects()
+        return {"projects": projects}
+    except Exception as e:
+        return {"projects": [], "error": str(e)}
+
+@app.delete("/api/project/{project_id}")
+async def delete_project(project_id: str):
+    """删除指定项目的所有数据"""
+    try:
+        from backend.core.blackboard import blackboard
+        await blackboard.delete_project(project_id)
+        return {"status": "success", "message": f"Project {project_id} deleted."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/project/{project_id}/state")
+async def get_state(project_id: str):
+    """获取指定工作流状态"""
+    state = await blackboard.get_workflow_state(project_id)
+    logs = await blackboard.get_agent_logs(project_id, limit=30)
+    artifacts = await blackboard.read_all(project_id)
 
     # 构建产出物摘要（不返回完整内容）
     artifact_summary = {}
@@ -152,8 +179,8 @@ async def get_state():
     }
 
 
-@app.get("/api/artifact/{artifact_type}")
-async def get_artifact(artifact_type: str):
+@app.get("/api/project/{project_id}/artifact/{artifact_type}")
+async def get_artifact(project_id: str, artifact_type: str):
     """获取指定类型的完整产出物"""
     from backend.core.blackboard import ArtifactType
     try:
@@ -161,13 +188,14 @@ async def get_artifact(artifact_type: str):
     except ValueError:
         raise HTTPException(status_code=404, detail=f"未知产出物类型: {artifact_type}")
 
-    content = await blackboard.read(at)
+    content = await blackboard.read(project_id, at)
     if content is None:
         raise HTTPException(status_code=404, detail=f"产出物 {artifact_type} 尚未生成")
     return {"type": artifact_type, "content": content}
 
 
 class ArtifactUploadRequest(BaseModel):
+    project_id: str
     artifacts: dict[str, str]
 
 
@@ -180,7 +208,7 @@ async def upload_artifacts(req: ArtifactUploadRequest):
     if not req.artifacts:
         raise HTTPException(status_code=400, detail="没有提供产出物")
 
-    await blackboard.publish_many(req.artifacts)
+    await blackboard.publish_many(req.project_id, req.artifacts)
     return {
         "status": "ok",
         "message": f"已上传 {len(req.artifacts)} 个产出物",
@@ -188,26 +216,29 @@ async def upload_artifacts(req: ArtifactUploadRequest):
     }
 
 
-@app.get("/api/traces")
-async def get_traces():
+@app.get("/api/project/{project_id}/traces")
+async def get_traces(project_id: str):
     """获取追踪事件（可观测性）"""
-    traces = await blackboard.get_traces(project_id="default", limit=100)
+    traces = await blackboard.get_traces(project_id=project_id, limit=100)
     return {"traces": traces}
 
 
 # ─── SSE 实时事件流 ───────────────────────────────────────────────────────────
 
 @app.get("/api/events")
-async def event_stream():
-    """SSE 实时事件流，前端订阅此接口获取实时更新"""
+async def event_stream(project_id: Optional[str] = None):
+    """SSE 实时事件流，前端订阅此接口获取实时更新
+    如果不提供 project_id，可能返回所有项目通知（按需扩展）。目前为了兼容，允许传空或传特定id。
+    """
     queue = blackboard.subscribe_sse()
 
     async def generator():
         try:
+            target_pid = project_id or "default"
             # 立即发送当前状态
-            state = await blackboard.get_workflow_state("default")
-            logs = await blackboard.get_agent_logs(limit=10)
-            artifacts = await blackboard.read_all()
+            state = await blackboard.get_workflow_state(target_pid)
+            logs = await blackboard.get_agent_logs(target_pid, limit=10)
+            artifacts = await blackboard.read_all(target_pid)
             artifact_summary = {
                 k: {"version": v.get("version", 1), "length": len(v.get("content", ""))}
                 for k, v in artifacts.items()
@@ -224,15 +255,27 @@ async def event_stream():
             while True:
                 try:
                     # 等待更新通知（超时后发送心跳）
-                    await asyncio.wait_for(queue.get(), timeout=15.0)
+                    msg = await asyncio.wait_for(queue.get(), timeout=15.0)
                 except asyncio.TimeoutError:
                     yield {"event": "heartbeat", "data": "ping"}
                     continue
 
-                # 发送最新状态
-                state = await blackboard.get_workflow_state("default")
-                logs = await blackboard.get_agent_logs(limit=20)
-                artifacts = await blackboard.read_all()
+                if isinstance(msg, dict) and msg.get("type") == "stream":
+                    # Filter by project_id
+                    if msg.get("project_id") == target_pid or target_pid == "default":
+                        yield {
+                            "event": "stream",
+                            "data": json.dumps({
+                                "agent": msg.get("agent"),
+                                "chunk": msg.get("chunk")
+                            }, ensure_ascii=False)
+                        }
+                    continue
+
+                # 发送最新状态 (state_update)
+                state = await blackboard.get_workflow_state(target_pid)
+                logs = await blackboard.get_agent_logs(target_pid, limit=20)
+                artifacts = await blackboard.read_all(target_pid)
                 artifact_summary = {
                     k: {
                         "version": v.get("version", 1),
@@ -337,6 +380,7 @@ class AiStyleRequest(BaseModel):
 
 
 class DocumentSaveRequest(BaseModel):
+    project_id: str
     mode: str
     sections: list
 
@@ -462,21 +506,22 @@ async def ai_adjust_style(req: AiStyleRequest):
 @app.post("/api/document/save")
 async def save_document(req: DocumentSaveRequest):
     """保存文档"""
-    doc_id = hashlib.md5(f"{req.mode}_{datetime.now().isoformat()}".encode()).hexdigest()[:8]
+    doc_id = hashlib.md5(f"{req.project_id}_{req.mode}_{datetime.now().isoformat()}".encode()).hexdigest()[:8]
     doc_data = {
         "id": doc_id,
+        "project_id": req.project_id,
         "mode": req.mode,
         "sections": req.sections,
         "created_at": datetime.now().isoformat(),
     }
 
     # 保存当前文档
-    doc_file = DOC_PATH / f"{req.mode}_current.json"
+    doc_file = DOC_PATH / f"{req.project_id}_{req.mode}.json"
     with open(doc_file, "w", encoding="utf-8") as f:
         json.dump(doc_data, f, ensure_ascii=False, indent=2)
 
     # 保存版本快照
-    version_file = DOC_PATH / f"{req.mode}_v{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    version_file = DOC_PATH / f"v_{req.project_id}_{req.mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(version_file, "w", encoding="utf-8") as f:
         json.dump(doc_data, f, ensure_ascii=False, indent=2)
 
@@ -484,20 +529,27 @@ async def save_document(req: DocumentSaveRequest):
 
 
 @app.get("/api/document/load")
-async def load_document(mode: str):
+async def load_document(project_id: str, mode: str):
     """加载文档"""
-    doc_file = DOC_PATH / f"{mode}_current.json"
+    doc_file = DOC_PATH / f"{project_id}_{mode}.json"
     if doc_file.exists():
         with open(doc_file, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"mode": mode, "sections": []}
+            
+    # 兼容没有独立项目ID的旧版数据存档
+    legacy_file = DOC_PATH / f"{mode}_current.json"
+    if project_id == "default" and legacy_file.exists():
+        with open(legacy_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+            
+    return {"project_id": project_id, "mode": mode, "sections": []}
 
 
 @app.get("/api/document/versions")
-async def get_document_versions(mode: str):
+async def get_document_versions(project_id: str, mode: str):
     """获取文档版本历史"""
     versions = []
-    for f in sorted(DOC_PATH.glob(f"{mode}_v*.json"), reverse=True)[:20]:
+    for f in sorted(DOC_PATH.glob(f"v_{project_id}_{mode}_*.json"), reverse=True)[:20]:
         try:
             with open(f, "r", encoding="utf-8") as fp:
                 data = json.load(fp)

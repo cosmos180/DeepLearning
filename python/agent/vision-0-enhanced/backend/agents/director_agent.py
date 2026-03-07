@@ -59,8 +59,8 @@ STATIC(静止) | PAN(水平摇) | TILT(垂直摇) | DOLLY IN/OUT(推拉轨) | TR
     async def build_user_prompt(self) -> str:
         # 新增强制中文约束
         constraint = "【重要提示】请确保所有输出内容（包括所有标题、标签、术语和 Prompt 内容本身）严格且完全使用中文。"
-        script = await self.bb.read(ArtifactType.SCRIPT) or ""
-        characters = await self.bb.read(ArtifactType.CHARACTER_SHEETS) or ""
+        script = await self.bb.read(self.project_id, ArtifactType.SCRIPT) or ""
+        characters = await self.bb.read(self.project_id, ArtifactType.CHARACTER_SHEETS) or ""
 
         return f"""请根据以下剧本和角色设定，创作完整的分镜清单和视频生成 Prompt：
 
@@ -97,6 +97,6 @@ STATIC(静止) | PAN(水平摇) | TILT(垂直摇) | DOLLY IN/OUT(推拉轨) | TR
         if not sections["SHOT_LIST"]:
             sections["SHOT_LIST"] = raw_output
 
-        await self.bb.publish(ArtifactType.SHOT_LIST, sections["SHOT_LIST"].strip())
-        await self.bb.publish(ArtifactType.VIDEO_PROMPTS, sections["VIDEO_PROMPTS"].strip())
-        await self.bb.publish(ArtifactType.DIRECTOR_NOTES, sections["DIRECTOR_NOTES"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.SHOT_LIST, sections["SHOT_LIST"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.VIDEO_PROMPTS, sections["VIDEO_PROMPTS"].strip())
+        await self.bb.publish(self.project_id, ArtifactType.DIRECTOR_NOTES, sections["DIRECTOR_NOTES"].strip())

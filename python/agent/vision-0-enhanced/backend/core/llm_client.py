@@ -30,12 +30,25 @@ http_client = None
 if proxy_url:
     http_client = httpx.AsyncClient(proxy=proxy_url)
 
-# OpenRouter 客户端（默认）
-_client = AsyncOpenAI(
-    max_retries=0,
-    timeout=60.0,  # 60秒超时
-    http_client=http_client
-)
+# OpenRouter Client (Default)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+
+_client = None
+if OPENROUTER_API_KEY:
+    _client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=OPENROUTER_API_KEY,
+        max_retries=0,
+        timeout=60.0,
+        http_client=http_client
+    )
+else:
+    # 兼容没有配置时的 fallback
+    _client = AsyncOpenAI(
+        max_retries=0,
+        timeout=60.0,
+        http_client=http_client
+    )
 
 # Cherry Studio 客户端
 _cherry_client = None
@@ -44,8 +57,7 @@ if CHERRY_API_URL and CHERRY_API_KEY:
         base_url=CHERRY_API_URL,
         api_key=CHERRY_API_KEY,
         max_retries=0,
-        timeout=60.0,
-        http_client=http_client
+        timeout=60.0
     )
 
 
@@ -77,26 +89,37 @@ async def call_llm(
         {"role": "user", "content": user_prompt},
     ]
 
+    # 解析前端可能附带的自定义 provider 前缀
+    if model and model.startswith("cherry/"):
+        api_source = "cherry"
+        model = model[7:]
+
     # 根据 api_source 选择客户端
     if api_source == "cherry" and _cherry_client:
         client = _cherry_client
-        # Cherry Studio 模型格式为 "provider:model_id"，保持原格式
+        if "/" in model and ":" not in model:
+            model = model.replace("/", ":")
     else:
         client = _client
-        # OpenRouter 格式需要去掉 provider: 前缀
         if ":" in model:
-            model = model.split(":", 1)[1]
+            model = model.replace(":", "/")
 
-    response = await client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    try:
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
 
-    content = response.choices[0].message.content or ""
-    tokens = response.usage.total_tokens if response.usage else 0
-    return content, tokens
+        content = response.choices[0].message.content or ""
+        tokens = response.usage.total_tokens if response.usage else 0
+        return content, tokens
+    except Exception as e:
+        import traceback
+        error_msg = f"LLM Connection Error ({api_source} / {model}): {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        raise Exception(error_msg)
 
 
 async def call_llm_stream(
@@ -105,17 +128,35 @@ async def call_llm_stream(
     model: str = None,
     temperature: float = 0.8,
     max_tokens: int = 4000,
+    api_source: str = "openrouter",
 ) -> AsyncGenerator[str, None]:
     """流式调用 LLM，逐 chunk 返回内容"""
     if model is None:
         model = DEFAULT_MODEL
+    elif "gpt-4.1-nano" in model or "mini" in model:
+        model = FAST_MODEL
         
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
 
-    stream = await _client.chat.completions.create(
+    # 解析前端可能附带的自定义 provider 前缀
+    if model and model.startswith("cherry/"):
+        api_source = "cherry"
+        model = model[7:]
+
+    # 根据 api_source 选择客户端
+    if api_source == "cherry" and _cherry_client:
+        client = _cherry_client
+        if "/" in model and ":" not in model:
+            model = model.replace("/", ":")
+    else:
+        client = _client
+        if ":" in model:
+            model = model.replace(":", "/")
+
+    stream = await client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=temperature,
@@ -123,10 +164,13 @@ async def call_llm_stream(
         stream=True,
     )
 
+    print(f"DEBUG [{api_source}/{model}]: stream generator started", flush=True)
     async for chunk in stream:
         delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+        if delta is not None:
+            # print(f"DEBUG YIELD: {repr(delta)}", flush=True)  # comment out for performance, but good for local debugging if needed
+            if delta != "":
+                yield delta
 
 
 async def get_cherry_models() -> list:
