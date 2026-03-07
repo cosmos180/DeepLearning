@@ -93,13 +93,12 @@ def batch_recognize_cmd(folder_path, pattern, recursive):
 @click.option("--excel-path", default=DEFAULT_EXCEL, help="Excel 文件路径")
 @click.option("--hint", default=None, help="主题提示")
 @click.option("--date-hint", default=None, help="日期提示")
-@click.option("--image-anchor", default="H2", help="图片锚点位置")
-def recognize_and_save_cmd(image_path, excel_path, hint, date_hint, image_anchor):
-    """识别收据并保存到 Excel"""
+def recognize_and_save_cmd(image_path, excel_path, hint, date_hint):
+    """识别收据并保存到 Excel（图片自动插入到表格下方）"""
     ocr = _import_ocr()
     result = ocr.recognize_and_save(
         image_path=image_path, excel_path=excel_path,
-        title_hint=hint, date_hint=date_hint, image_anchor=image_anchor,
+        title_hint=hint, date_hint=date_hint,
     )
     click.echo(result)
 
@@ -129,16 +128,15 @@ def create_receipt_cmd(title, delivery_date, purchaser, payment, items):
 @cli.command()
 @click.option("--data", required=True, help="收据数据 JSON")
 @click.option("--excel-path", default=DEFAULT_EXCEL, help="Excel 文件路径")
-@click.option("--image-path", default=None, help="收据图片路径")
-@click.option("--image-anchor", default="H2", help="图片锚点位置")
-def save(data, excel_path, image_path, image_anchor):
+@click.option("--image-path", default=None, help="收据图片路径（自动插入到表格下方）")
+def save(data, excel_path, image_path):
     """保存收据到 Excel"""
     import json
     excel = _import_excel()
     receipt_data = json.loads(data)
     result = excel.save_receipt_to_excel(
         receipt_data=receipt_data, excel_path=excel_path,
-        image_path=image_path, image_anchor=image_anchor,
+        image_path=image_path,
     )
     click.echo(result)
 

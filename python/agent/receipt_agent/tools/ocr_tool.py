@@ -273,14 +273,12 @@ def recognize_and_save(
     api_key: Optional[str] = None,
     title_hint: Optional[str] = None,
     date_hint: Optional[str] = None,
-    image_anchor: str = "H2",
-    image_width: Optional[float] = None,
-    image_height: Optional[float] = None,
 ) -> str:
     """
     识别收据并保存到 Excel（包含原始收据图片）
 
     这是一个便捷函数，将 AI 识别和 Excel 保存合并为一步操作。
+    图片将自动插入到表格内容下方。
 
     Args:
         image_path: 收据图片文件路径
@@ -288,9 +286,6 @@ def recognize_and_save(
         api_key: API 密钥（默认从环境变量 ARK_API_KEY 读取）
         title_hint: 主题提示（可选）
         date_hint: 日期提示（可选，格式：YYYY-M-D）
-        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
-        image_width: 图片宽度（像素，默认自适应）
-        image_height: 图片高度（像素，默认自适应）
 
     Returns:
         操作结果的格式化字符串
@@ -299,8 +294,7 @@ def recognize_and_save(
         recognize_and_save(image_path="./receipt.jpg")
         recognize_and_save(
             image_path="./receipt.jpg",
-            image_width=200,
-            image_height=300
+            title_hint="办公用品"
         )
     """
     try:
@@ -348,14 +342,11 @@ def recognize_and_save(
         with open(excel_tool_path, 'r') as f:
             exec(f.read(), excel_tool.__dict__)
 
-        # 步骤4: 保存到 Excel（包含图片）
+        # 步骤4: 保存到 Excel（图片自动插入到表格下方）
         result = excel_tool.save_receipt_to_excel(
             receipt_data=receipt_data,
             excel_path=excel_path,
             image_path=image_path,
-            image_anchor=image_anchor,
-            image_width=image_width,
-            image_height=image_height,
         )
 
         # 组合结果

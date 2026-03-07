@@ -89,9 +89,6 @@ def save_receipt_to_excel(
     receipt_data: dict,
     excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
     image_path: Optional[str] = None,
-    image_anchor: str = "H2",
-    image_width: Optional[float] = None,
-    image_height: Optional[float] = None,
 ) -> str:
     """
     保存收据到 Excel 文件
@@ -100,9 +97,7 @@ def save_receipt_to_excel(
         receipt_data: 收据数据字典，包含 title, delivery_date, purchaser, payment_method, items
         excel_path: Excel 文件路径
         image_path: 收据图片路径（可选），支持 .jpg, .png, .bmp, .gif 等格式
-        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
-        image_width: 图片宽度（像素，默认自适应）
-        image_height: 图片高度（像素，默认自适应）
+                    图片将自动插入到表格内容下方
 
     Returns:
         操作结果的格式化字符串
@@ -143,60 +138,34 @@ def save_receipt_to_excel(
             )
             items.append(item)
 
-        # 创建收据
+        # 创建收据（传递图片路径给 source_file，让 ExcelHandler 正确插入到表格下方）
         receipt = create_receipt(
             title=receipt_data.get("title", "未命名采购"),
             delivery_date=delivery_date,
             purchaser=receipt_data.get("purchaser", "梁程程妈妈"),
+            source_file=image_path,  # 图片路径将通过 source_file 传递
         )
         receipt.payment_method = receipt_data.get("payment_method", "转账")
         receipt.items = items
 
-        # 保存到 Excel
+        # 保存到 Excel（图片通过 source_file 由 ExcelHandler 统一处理，插入到表格下方）
         excel_file = _normalize_path(excel_path)
         handler = ExcelHandler(excel_file)
         handler.add_receipt(receipt)
         handler.close()
 
-        # 插入收据图片（如果提供）
+        # 图片信息（由 ExcelHandler 处理）
         image_info = ""
         if image_path:
-            try:
-                from openpyxl import load_workbook
-                from openpyxl.drawing.image import Image as OpenpyxlImage
-
-                img_file = _normalize_path(image_path)
-                if not img_file.exists():
-                    image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
-                else:
-                    wb = load_workbook(excel_file)
-                    ws = wb[receipt.sheet_name]
-
-                    # 加载图片
-                    img = OpenpyxlImage(str(img_file))
-
-                    # 设置图片尺寸（如果指定）
-                    if image_width:
-                        img.width = int(image_width)
-                    if image_height:
-                        img.height = int(image_height)
-
-                    # 添加图片到指定位置
-                    ws.add_image(img, image_anchor)
-
-                    # 保存文件
-                    wb.save(excel_file)
-                    wb.close()
-
-                    image_info = (
-                        f"\n  📷 图片已插入\n"
-                        f"    位置: {image_anchor}\n"
-                        f"    文件: {img_file.name}"
-                    )
-            except ImportError:
-                image_info = f"\n  ⚠ 缺少 Pillow 库，无法插入图片（pip install Pillow）"
-            except Exception as img_e:
-                image_info = f"\n  ⚠ 图片插入失败: {str(img_e)}"
+            img_file = _normalize_path(image_path)
+            if img_file.exists():
+                image_info = (
+                    f"\n  📷 图片已插入\n"
+                    f"    位置: 表格下方\n"
+                    f"    文件: {img_file.name}"
+                )
+            else:
+                image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
 
         return (
             f"✓ 收据已保存到 Excel\n"
@@ -328,9 +297,6 @@ def update_receipt_in_excel(
     receipt_data: dict,
     excel_path: str = "~/Documents/receipt-309/309-采购明细.xlsx",
     image_path: Optional[str] = None,
-    image_anchor: str = "H2",
-    image_width: Optional[float] = None,
-    image_height: Optional[float] = None,
 ) -> str:
     """
     更新 Excel 中的收据
@@ -340,9 +306,7 @@ def update_receipt_in_excel(
         receipt_data: 新的收据数据
         excel_path: Excel 文件路径
         image_path: 收据图片路径（可选），支持 .jpg, .png, .bmp, .gif 等格式
-        image_anchor: 图片锚点单元格位置（默认 "H2"，即放在右侧）
-        image_width: 图片宽度（像素，默认自适应）
-        image_height: 图片高度（像素，默认自适应）
+                    图片将自动插入到表格内容下方
 
     Returns:
         操作结果的格式化字符串
@@ -396,11 +360,12 @@ def update_receipt_in_excel(
         elif existing:
             items = existing.items
 
-        # 创建收据
+        # 创建收据（传递图片路径给 source_file，让 ExcelHandler 正确插入到表格下方）
         receipt = create_receipt(
             title=receipt_data.get("title", existing.title if existing else "未命名"),
             delivery_date=delivery_date,
             purchaser=receipt_data.get("purchaser", existing.purchaser if existing else "梁程程妈妈"),
+            source_file=image_path,  # 图片路径将通过 source_file 传递
         )
         receipt.payment_method = receipt_data.get("payment_method", existing.payment_method if existing else "转账")
         receipt.items = items
@@ -408,45 +373,18 @@ def update_receipt_in_excel(
         handler.add_receipt(receipt)
         handler.close()
 
-        # 插入收据图片（如果提供）
+        # 图片信息（由 ExcelHandler 处理）
         image_info = ""
         if image_path:
-            try:
-                from openpyxl import load_workbook
-                from openpyxl.drawing.image import Image as OpenpyxlImage
-
-                img_file = _normalize_path(image_path)
-                if not img_file.exists():
-                    image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
-                else:
-                    wb = load_workbook(excel_file)
-                    ws = wb[receipt.sheet_name]
-
-                    # 加载图片
-                    img = OpenpyxlImage(str(img_file))
-
-                    # 设置图片尺寸（如果指定）
-                    if image_width:
-                        img.width = int(image_width)
-                    if image_height:
-                        img.height = int(image_height)
-
-                    # 添加图片到指定位置
-                    ws.add_image(img, image_anchor)
-
-                    # 保存文件
-                    wb.save(excel_file)
-                    wb.close()
-
-                    image_info = (
-                        f"\n  📷 图片已插入\n"
-                        f"    位置: {image_anchor}\n"
-                        f"    文件: {img_file.name}"
-                    )
-            except ImportError:
-                image_info = f"\n  ⚠ 缺少 Pillow 库，无法插入图片（pip install Pillow）"
-            except Exception as img_e:
-                image_info = f"\n  ⚠ 图片插入失败: {str(img_e)}"
+            img_file = _normalize_path(image_path)
+            if img_file.exists():
+                image_info = (
+                    f"\n  📷 图片已插入\n"
+                    f"    位置: 表格下方\n"
+                    f"    文件: {img_file.name}"
+                )
+            else:
+                image_info = f"\n  ⚠ 图片文件不存在: {image_path}"
 
         return (
             f"✓ 收据已更新\n"
