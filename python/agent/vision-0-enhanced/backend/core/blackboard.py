@@ -15,6 +15,20 @@ DB_PATH = Path(__file__).parent.parent / "data" / "blackboard.db"
 
 
 class ArtifactType(str, Enum):
+    # 小说创作相关
+    TOPIC_IDEAS = "topic_ideas"           # 选题创意
+    NOVEL_OUTLINE = "novel_outline"        # 小说大纲/骨架
+    TITLE_CANDIDATES = "title_candidates"  # 候选书名（20个）
+    SELECTED_TITLE = "selected_title"      # 选中的书名
+    CHARACTER_SETUPS = "character_setups"  # 角色设定
+    SKELETON_CANDIDATES = "skeleton_candidates"  # 候选骨架（3个）
+    SELECTED_SKELETON = "selected_skeleton"  # 选中的骨架
+    CHAPTER_CONTENT = "chapter_content"    # 章节正文
+    ALL_CHAPTERS = "all_chapters"          # 完整小说
+    OPENING_SUGGESTION = "opening_suggestion"  # 开篇建议
+    REVIEW_COMMENTS = "review_comments"    # 评审意见
+
+    # 影视制作相关（保留用于兼容）
     LOGLINE = "logline"
     CHARACTER_SHEETS = "character_sheets"
     BEAT_SHEET = "beat_sheet"
@@ -373,7 +387,7 @@ class Blackboard:
             
     async def stream_output(self, project_id: str, agent_name: str, chunk: str):
         """流式广播产生的 token"""
-        print(f"DEBUG STREAM OUTPUT: {repr(chunk)}", flush=True)
+        # print(f"DEBUG STREAM OUTPUT: {repr(chunk)}", flush=True)
         for q in self._sse_queues:
             try:
                 q.put_nowait({"type": "stream", "project_id": project_id, "agent": agent_name, "chunk": chunk})

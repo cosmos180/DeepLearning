@@ -11,7 +11,7 @@ from hashlib import md5
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,8 +30,9 @@ if env_path.exists():
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from backend.core.blackboard import blackboard, WorkflowStatus
+from backend.core.blackboard import blackboard, WorkflowStatus, AgentStatus
 from backend.core.orchestrator import Orchestrator
+from backend.core.novel_orchestrator import NovelOrchestrator, NovelStep
 from backend.core.llm_client import call_llm, FAST_MODEL, DEFAULT_MODEL, get_cherry_models
 
 
@@ -121,6 +122,31 @@ async def reset_project(project_id: str):
         task.cancel()
     await blackboard.delete_project(project_id)
     return {"status": "reset", "message": f"项目 {project_id} 已重置"}
+
+
+@app.post("/api/project/{project_id}/reset-status")
+async def reset_project_status(project_id: str):
+    """重置项目状态（解除卡住的running状态）"""
+    global _running_tasks
+
+    # 取消正在运行的任务
+    task = _running_tasks.get(project_id)
+    if task and not task.done():
+        task.cancel()
+        _running_tasks.pop(project_id, None)
+
+    # 获取当前状态
+    current_state = await blackboard.get_workflow_state(project_id)
+    current_step = current_state.get("current_step") if current_state else None
+
+    # 将状态从running改为idle，但保持当前步骤
+    await blackboard.set_workflow_state(
+        project_id,
+        WorkflowStatus.IDLE,
+        current_step=current_step  # 保持当前步骤不变
+    )
+
+    return {"status": "ok", "message": "项目状态已重置"}
 
 
 # ─── 模型查询 ─────────────────────────────────────────────────────────────────
@@ -336,6 +362,15 @@ async def index_page():
     if index_file.exists():
         return FileResponse(index_file)
     return {"error": "index.html not found"}
+
+
+@app.get("/novel.html")
+async def novel_page():
+    """返回小说创作页面"""
+    novel_file = FRONTEND_PATH / "novel.html"
+    if novel_file.exists():
+        return FileResponse(novel_file)
+    return {"error": "novel.html not found"}
 
 
 # 挂载静态资源
@@ -808,3 +843,177 @@ async def generate_section(req: dict):
         return {"content": content.strip()}
     except Exception as e:
         return {"content": f"生成失败：{str(e)}"}
+
+
+# ─── 小说创作 API ─────────────────────────────────────────────────────────────
+
+class NovelProjectRequest(BaseModel):
+    project_id: Optional[str] = None
+    genre: str = "古言"           # 古言/现言/仙侠/末世
+    audience: str = "女频"        # 女频/男频
+    tone: str = "爽文"            # 爽文/虐恋
+    female_lead_identity: str = "流亡公主"  # 女主身份
+    model_name: Optional[str] = None
+
+
+@app.post("/api/novel/start")
+async def start_novel_project(req: NovelProjectRequest):
+    """启动新的小说创作项目（步骤1-3）"""
+    global _running_tasks
+
+    project_id = req.project_id or str(uuid.uuid4())
+
+    # 检查当前项目是否在运行
+    state = await blackboard.get_workflow_state(project_id)
+    if state and state.get("status") == WorkflowStatus.RUNNING.value and project_id in _running_tasks and not _running_tasks[project_id].done():
+        raise HTTPException(status_code=409, detail=f"项目 {project_id} 正在运行，请等待完成或重置")
+
+    async def run_workflow():
+        orch = NovelOrchestrator(blackboard)
+        try:
+            await orch.run_full_workflow(
+                project_id=project_id,
+                genre=req.genre,
+                audience=req.audience,
+                tone=req.tone,
+                female_lead_identity=req.female_lead_identity,
+                model_name=req.model_name,
+                progress_callback=lambda msg: blackboard.log_agent(
+                    project_id, "系统", AgentStatus.THINKING, msg
+                )
+            )
+        except Exception as e:
+            print(f"小说工作流异常 [{project_id}]: {e}")
+            import traceback
+            traceback.print_exc()
+
+    _running_tasks[project_id] = asyncio.create_task(run_workflow())
+
+    return {
+        "status": "started",
+        "project_id": project_id,
+        "message": f"小说项目 {project_id} 已启动（选题→大纲→骨架诊断）"
+    }
+
+
+@app.post("/api/novel/{project_id}/select-skeleton")
+async def select_skeleton(project_id: str, skeleton: str = Body(..., embed=True)):
+    """选择骨架（步骤3完成后，用户选择后继续）"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.select_skeleton(skeleton)
+
+    return {
+        "status": "ok",
+        "message": "骨架已选择，可以继续生成正文"
+    }
+
+
+@app.post("/api/novel/{project_id}/generate-chapter")
+async def generate_chapter(
+    project_id: str,
+    chapter_number: Optional[int] = None,
+    model_name: Optional[str] = None
+):
+    """生成指定章节（步骤5）"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_5_generate_chapter(
+        chapter_number=chapter_number,
+        model_name=model_name
+    )
+
+    return {
+        "status": "ok",
+        "message": f"{'第' + str(chapter_number) + '章' if chapter_number else '第一章'}正文已生成"
+    }
+
+
+@app.post("/api/novel/{project_id}/review")
+async def review_novel(project_id: str, model_name: Optional[str] = None):
+    """评审小说（步骤6）"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_6_review(model_name=model_name)
+
+    return {
+        "status": "ok",
+        "message": "评审完成"
+    }
+
+
+@app.post("/api/novel/{project_id}/optimize-opening")
+async def optimize_opening(project_id: str, model_name: Optional[str] = None):
+    """优化开头（步骤7）"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_7_opening(model_name=model_name)
+
+    return {
+        "status": "ok",
+        "message": "开头建议已生成"
+    }
+
+
+@app.post("/api/novel/{project_id}/complete")
+async def complete_novel(project_id: str):
+    """完成小说项目（步骤8-9）"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.complete_workflow()
+
+    return {
+        "status": "completed",
+        "message": "小说创作已完成"
+    }
+
+
+# ─── 小说创作步骤控制 ─────────────────────────────────────────────────────────
+
+@app.post("/api/novel/{project_id}/step/topic")
+async def novel_step_topic(project_id: str, model_name: Optional[str] = None):
+    """步骤1：选题"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_1_topic(model_name=model_name)
+    return {"status": "ok", "message": "选题已生成"}
+
+
+@app.post("/api/novel/{project_id}/step/outline")
+async def novel_step_outline(project_id: str, model_name: Optional[str] = None):
+    """步骤2：大纲"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_2_outline(model_name=model_name)
+    return {"status": "ok", "message": "大纲已生成"}
+
+
+@app.post("/api/novel/{project_id}/step/title")
+async def novel_step_title(project_id: str, model_name: Optional[str] = None):
+    """步骤2.5：书名生成"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_2_5_title(model_name=model_name)
+    return {"status": "ok", "message": "书名已生成，请选择"}
+
+
+@app.post("/api/novel/{project_id}/select-title")
+async def novel_select_title(project_id: str, title: str = Body(..., embed=True)):
+    """选择书名"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.select_title(title)
+    return {
+        "status": "ok",
+        "message": "书名已选择",
+        "selected_title": title
+    }
+
+
+@app.post("/api/novel/{project_id}/step/diagnostics")
+async def novel_step_diagnostics(project_id: str, model_name: Optional[str] = None):
+    """步骤3：骨架诊断"""
+    orch = NovelOrchestrator(blackboard)
+    orch.project_id = project_id
+    await orch.run_step_3_diagnostics(model_name=model_name)
+    return {"status": "ok", "message": "骨架诊断完成，请选择候选骨架"}

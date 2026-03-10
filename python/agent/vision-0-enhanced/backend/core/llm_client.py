@@ -39,14 +39,14 @@ if OPENROUTER_API_KEY:
         base_url="https://openrouter.ai/api/v1",
         api_key=OPENROUTER_API_KEY,
         max_retries=0,
-        timeout=60.0,
+        timeout=600.0,  # 增加到 10 分钟
         http_client=http_client
     )
 else:
     # 兼容没有配置时的 fallback
     _client = AsyncOpenAI(
         max_retries=0,
-        timeout=60.0,
+        timeout=600.0,  # 增加到 10 分钟
         http_client=http_client
     )
 
@@ -57,7 +57,7 @@ if CHERRY_API_URL and CHERRY_API_KEY:
         base_url=CHERRY_API_URL,
         api_key=CHERRY_API_KEY,
         max_retries=0,
-        timeout=60.0
+        timeout=180.0  # 增加到 3 分钟
     )
 
 
@@ -165,12 +165,26 @@ async def call_llm_stream(
     )
 
     print(f"DEBUG [{api_source}/{model}]: stream generator started", flush=True)
-    async for chunk in stream:
-        delta = chunk.choices[0].delta.content
-        if delta is not None:
-            # print(f"DEBUG YIELD: {repr(delta)}", flush=True)  # comment out for performance, but good for local debugging if needed
-            if delta != "":
-                yield delta
+    try:
+        async for chunk in stream:
+            try:
+                if not getattr(chunk, "choices", None):
+                    continue
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                # Some APIs expose reasoning_content as an attribute or in model_extra
+                reasoning = getattr(delta, "reasoning_content", None)
+                if not reasoning and hasattr(delta, "model_extra") and delta.model_extra:
+                    reasoning = delta.model_extra.get("reasoning_content")
+
+                if content:
+                    yield content
+                elif reasoning:
+                    yield reasoning
+            except Exception as e:
+                print(f"DEBUG ERROR in chunk parsing: {e}, chunk={chunk}", flush=True)
+    except Exception as e:
+        print(f"DEBUG ERROR in async generator: {e}", flush=True)
 
 
 async def get_cherry_models() -> list:

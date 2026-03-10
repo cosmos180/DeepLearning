@@ -1,0 +1,2209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 小说创作工坊</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', 'Noto Serif SC', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-dark {
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .step-card {
+      transition: all 0.3s ease;
+    }
+
+    .step-card.active {
+      border-color: rgba(139, 92, 246, 0.6);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    }
+
+    .step-card.completed {
+      border-color: rgba(34, 197, 94, 0.5);
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .step-card.pending {
+      opacity: 0.5;
+    }
+
+    .step-card.waiting {
+      border-color: rgba(251, 191, 36, 0.5);
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .step-card.error {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .content-display {
+      font-family: 'Noto Serif SC', serif;
+      line-height: 1.8;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .content-display p {
+      text-indent: 2em;
+      margin-bottom: 1em;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.5);
+      border-radius: 4px;
+    }
+
+    .skeleton-option {
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .skeleton-option:hover {
+      background: rgba(139, 92, 246, 0.1);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+
+    .skeleton-option.selected {
+      background: rgba(139, 92, 246, 0.2) !important;
+      border-color: rgba(139, 92, 246, 0.8) !important;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
+    }
+
+    .skeleton-option.selected h3 {
+      color: #a78bfa !important;
+    }
+
+    .selection-indicator {
+      transition: all 0.2s ease;
+    }
+
+    .selection-indicator.border-green-500 {
+      border-color: #22c55e !important;
+      background-color: rgba(34, 197, 94, 0.2) !important;
+    }
+
+    .action-btn {
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .guide-tip {
+      border-left: 3px solid rgba(139, 92, 246, 0.6);
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Project card in unfinished list */
+    .project-card {
+      transition: all 0.2s ease;
+    }
+
+    .project-card:hover {
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    /* Progress bar animation */
+    @keyframes progressPulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.8;
+      }
+    }
+
+    .progress-bar {
+      animation: progressPulse 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="p-4 md:p-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 class="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+        📚 AI 小说创作工坊
+      </h1>
+      <p class="text-gray-400 text-lg">从选题到成稿，9 步完成您的小说创作之旅</p>
+    </header>
+
+    <!-- Error Message (hidden by default) -->
+    <div id="errorMessage" class="error-message rounded-xl p-4 mb-6 hidden">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <h3 class="font-semibold text-red-400 mb-1">错误提示</h3>
+          <p class="text-sm text-gray-300" id="errorText"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guide Tip -->
+    <div id="guideTip" class="guide-tip glass rounded-xl p-4 mb-6">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">💡</span>
+        <div>
+          <h3 class="font-semibold text-purple-300 mb-1" id="guideTitle">操作提示</h3>
+          <p class="text-sm text-gray-300" id="guideText">欢迎使用 AI 小说创作工坊！配置您的创作参数后点击"开始创作"即可。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6" id="mainGrid">
+      <!-- Left Panel: Configuration -->
+      <div class="lg:col-span-3" id="leftPanel">
+        <div class="glass rounded-2xl p-6 mb-6">
+          <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span>⚙️</span> 创作配置
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-400 mb-2">题材类型</label>
+              <select id="genre" class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-purple-500">
+                <option value="古言">古言（大漠商战/强强博弈）</option>
+                <option value="现言">现言（都市/职场/豪门）</option>
+                <option value="仙侠">仙侠（修真/神魔/师徒）</option>
+                <option value="末世">末世（丧尸/异能/生存）</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-400 mb-2">目标受众</label>
+              <select id="audience" class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-purple-500">
+                <option value="女频">女频</option>
+                <option value="男频">男频</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-400 mb-2">风格基调</label>
+              <select id="tone" class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-purple-500">
+                <option value="爽文">爽文（智性爽感/强强联合）</option>
+                <option value="虐恋">虐恋（逻辑闭环/极致拉扯）</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-400 mb-2">女主身份</label>
+              <input type="text" id="femaleLead" value="流亡公主"
+                     class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-purple-500"
+                     placeholder="例如：西域舞姬(实为谍报头子)">
+            </div>
+
+            <button id="startBtn" onclick="startProject()"
+                    class="w-full action-btn bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold py-3 px-6 rounded-xl">
+              🚀 开始创作
+            </button>
+          </div>
+        </div>
+
+        <!-- Project Info -->
+        <div class="glass rounded-2xl p-6">
+          <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span>📖</span> 项目信息
+          </h2>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-400">项目ID</span>
+              <span id="projectId" class="text-gray-300">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">当前步骤</span>
+              <span id="currentStep" class="text-purple-400">-</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">状态</span>
+              <span id="status" class="text-green-400">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resume Projects -->
+        <div class="glass rounded-2xl p-6 mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold flex items-center gap-2">
+              <span>📂</span> 未完成任务
+            </h2>
+            <button onclick="loadUnfinishedProjects()" class="text-sm text-purple-400 hover:text-purple-300">
+              🔄 刷新
+            </button>
+          </div>
+          <div id="unfinishedProjects" class="space-y-2">
+            <div class="text-center text-gray-500 py-4">
+              <p class="text-sm">加载中...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Panel: Workflow Steps -->
+      <div class="lg:col-span-5" id="centerPanel">
+        <div class="glass rounded-2xl p-6">
+          <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span>🔄</span> 创作流程
+          </h2>
+
+          <div class="space-y-3" id="stepsContainer">
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="1">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">1</div>
+                <div class="flex-1">
+                  <div class="font-medium">选题生成</div>
+                  <div class="text-xs text-gray-500">生成10个高概念选题</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="2">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">2</div>
+                <div class="flex-1">
+                  <div class="font-medium">大纲生成</div>
+                  <div class="text-xs text-gray-500">故事梗概+角色+章节</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">3</div>
+                <div class="flex-1">
+                  <div class="font-medium">骨架诊断</div>
+                  <div class="text-xs text-gray-500">3个候选骨架</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">4</div>
+                <div class="flex-1">
+                  <div class="font-medium">选择骨架</div>
+                  <div class="text-xs text-gray-500">人工选择最优方案</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">5</div>
+                <div class="flex-1">
+                  <div class="font-medium">生成正文</div>
+                  <div class="text-xs text-gray-500">创作章节内容</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="6">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">6</div>
+                <div class="flex-1">
+                  <div class="font-medium">毒舌评审</div>
+                  <div class="text-xs text-gray-500">分析留存点</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-card glass-dark rounded-xl p-4 pending" data-step="7">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-bold step-number">7</div>
+                <div class="flex-1">
+                  <div class="font-medium">开头优化</div>
+                  <div class="text-xs text-gray-500">生成开篇建议</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-6 pt-6 border-t border-gray-700">
+            <div class="grid grid-cols-3 gap-3">
+              <button id="nextStepBtn" onclick="executeNextStep()" disabled
+                      class="action-btn bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold py-3 px-4 rounded-xl disabled:opacity-50">
+                ▶️ 下一步
+              </button>
+              <button id="titleBtn" onclick="generateTitle()" disabled
+                      class="action-btn bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-semibold py-3 px-4 rounded-xl border border-blue-600/30 disabled:opacity-50">
+                📚 生成书名
+              </button>
+              <button id="reviewBtn" onclick="reviewNovel()" disabled
+                      class="action-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-xl disabled:opacity-50">
+                🔍 评审
+              </button>
+              <button id="openingBtn" onclick="optimizeOpening()" disabled
+                      class="action-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-xl disabled:opacity-50">
+                💡 开头优化
+              </button>
+              <button onclick="manualRefresh()"
+                      class="action-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-xl">
+                🔄 刷新状态
+              </button>
+              <button onclick="resetStatus()"
+                      class="action-btn bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 font-semibold py-3 px-4 rounded-xl border border-yellow-600/30">
+                🔓 解除卡住
+              </button>
+              <button onclick="resetProject()"
+                      class="action-btn bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold py-3 px-4 rounded-xl border border-red-600/30">
+                🗑️ 重置
+              </button>
+            </div>
+
+            <!-- Retry Button -->
+            <div id="retrySection" class="hidden mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-yellow-400">⚠️</span>
+                <span class="text-sm text-yellow-300">检测到任务可能超时</span>
+              </div>
+              <button onclick="retryCurrentStep()" class="action-btn w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 font-semibold py-2 px-4 rounded-lg border border-yellow-600/30">
+                🔄 重试当前步骤
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Content Display -->
+      <div class="lg:col-span-4" id="rightPanel">
+        <div class="glass rounded-2xl p-6 h-full flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold flex items-center gap-2">
+              <span>📄</span> 内容预览
+            </h2>
+            <div class="flex items-center gap-2">
+              <select id="artifactSelect" onchange="loadArtifact()"
+                      class="bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+                <option value="">选择产出物...</option>
+              </select>
+              <button onclick="copyContent()" id="copyBtn" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 p-2 rounded-lg border border-blue-600/30" title="复制内容">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+              <button onclick="toggleFullscreen()" class="bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 p-2 rounded-lg border border-purple-600/30" title="全屏预览">
+                <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <svg id="exitFullscreenIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="contentDisplay" class="content-display glass-dark rounded-xl p-4 text-gray-300">
+            <div class="text-center text-gray-500 py-12">
+              <div class="text-4xl mb-4">📝</div>
+              <p>开始创作后，内容将显示在这里</p>
+            </div>
+          </div>
+
+          <!-- Word Count -->
+          <div id="wordCount" class="mt-3 text-sm text-gray-500 text-right hidden">
+            字数: <span id="wordCountNum">0</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="mt-3 flex gap-2">
+            <button onclick="manualRefresh()" class="flex-1 action-btn bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 px-4 rounded-lg">
+              🔄 刷新状态
+            </button>
+            <button onclick="showExportModal()" class="flex-1 action-btn bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm py-2 px-4 rounded-lg border border-purple-600/30">
+              📥 导出
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.85);">
+      <div class="glass rounded-2xl p-6 max-w-md w-full">
+        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+          <span>📥</span> 导出内容
+        </h2>
+        <p class="text-gray-300 mb-6">选择导出格式：</p>
+        <div class="space-y-3">
+          <button onclick="exportContent('md'); closeExportModal();" class="w-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 font-semibold py-3 px-4 rounded-xl border border-purple-600/30">
+            📝 Markdown (.md)
+          </button>
+          <button onclick="exportContent('txt'); closeExportModal();" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-xl">
+            📄 纯文本 (.txt)
+          </button>
+          <button onclick="closeExportModal()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-3 px-4 rounded-xl">
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skeleton Selection Modal -->
+    <div id="skeletonModal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.85);">
+      <div class="glass rounded-2xl p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-2">
+          <span>🎯</span> 选择候选骨架
+        </h2>
+        <p class="text-gray-400 mb-4">请从以下 3 个候选骨架中选择一个继续创作</p>
+
+        <!-- Selection status -->
+        <div id="selectionStatus" class="hidden mb-4 p-3 rounded-lg bg-purple-500/20 border border-purple-500/50">
+          <span class="text-purple-300">已选择：<strong id="selectedSkeletonName" class="text-white">-</strong></span>
+        </div>
+
+        <div id="skeletonOptions" class="space-y-3 mb-6">
+          <!-- Skeleton options will be loaded here -->
+        </div>
+
+        <div class="flex gap-4">
+          <button onclick="confirmSelectSkeleton(this)"
+                  class="flex-1 action-btn bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold py-3 px-6 rounded-xl">
+            ✅ 确认选择
+          </button>
+          <button onclick="closeSkeletonModal()"
+                  class="flex-1 action-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl">
+            ❌ 取消
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Title Selection Modal -->
+    <div id="titleModal" class="hidden fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.85);">
+      <div class="glass rounded-2xl p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold mb-2 flex items-center gap-2">
+          <span>📚</span> 选择书名
+        </h2>
+        <p class="text-gray-400 mb-4">请从以下候选书名中选择一个，或自定义输入</p>
+
+        <!-- Selection status -->
+        <div id="titleSelectionStatus" class="hidden mb-4 p-3 rounded-lg bg-purple-500/20 border border-purple-500/50">
+          <span class="text-purple-300">已选择：<strong id="selectedTitleName" class="text-white">-</strong></span>
+        </div>
+
+        <!-- Custom input -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-300 mb-2">或自定义书名：</label>
+          <div class="flex gap-2">
+            <input type="text" id="customTitleInput"
+                   class="flex-1 bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500"
+                   placeholder="输入自定义书名...">
+            <button onclick="confirmCustomTitle()"
+                    class="bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2 px-4 rounded-lg">
+              使用自定义
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab navigation -->
+        <div class="flex gap-2 mb-4">
+          <button onclick="switchTitleTab('popular')" id="tabPopular"
+                  class="title-tab flex-1 py-2 px-4 rounded-lg bg-purple-600/20 text-purple-400 border border-purple-600/30 hover:bg-purple-600/30">
+            🔥 热门风格
+          </button>
+          <button onclick="switchTitleTab('literary')" id="tabLiterary"
+                  class="title-tab flex-1 py-2 px-4 rounded-lg bg-gray-700/50 text-gray-400 border border-gray-600/30 hover:bg-gray-600/50">
+            🎭 文艺风格
+          </button>
+          <button onclick="switchTitleTab('suspense')" id="tabSuspense"
+                  class="title-tab flex-1 py-2 px-4 rounded-lg bg-gray-700/50 text-gray-400 border border-gray-600/30 hover:bg-gray-600/50">
+            ❓ 悬疑风格
+          </button>
+        </div>
+
+        <div id="titleOptions" class="space-y-3 mb-6">
+          <!-- Title options will be loaded here -->
+        </div>
+
+        <div class="flex gap-4">
+          <button onclick="confirmSelectTitle()"
+                  class="flex-1 action-btn bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold py-3 px-6 rounded-xl">
+            ✅ 确认选择
+          </button>
+          <button onclick="closeTitleModal()"
+                  class="flex-1 action-btn bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl">
+            ❌ 取消
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Detect API base URL - handle both file:// and http:// protocols
+    let API_BASE;
+    const currentPort = window.location.port;
+
+    if (window.location.protocol === 'file:') {
+      // When opening HTML directly, use localhost
+      API_BASE = 'http://127.0.0.1:8765';
+    } else if (currentPort === '8765') {
+      // When served by backend on port 8765, use the same origin
+      API_BASE = window.location.protocol + '//' + window.location.hostname + ':8765';
+    } else {
+      // Otherwise use the explicit port 8765
+      API_BASE = window.location.protocol + '//' + window.location.hostname + ':8765';
+    }
+    console.log('API_BASE set to:', API_BASE);
+
+    let currentProjectId = null;
+    let pollingInterval = null;
+    let selectedSkeletonIndex = null;
+    let selectedTitleIndex = null;
+    let currentTitleStyle = 'popular';
+    let currentArtifacts = {};
+    let currentStep = null;
+    let skeletonModalOpened = false;  // 防止重复打开弹窗
+    let titleModalOpened = false;  // 防止重复打开弹窗
+    let titleCandidatesData = null;  // 存储书名候选数据
+    let stepStartTime = null;  // 记录步骤开始时间
+    let lastArtifactCount = 0;  // 记录上次产出物数量
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, initializing...');
+      console.log('Current location:', window.location.href);
+      console.log('API_BASE:', API_BASE);
+
+      showGuide('welcome');
+
+      // Test API connection first
+      testApiConnection().then((isConnected) => {
+        if (isConnected) {
+          loadUnfinishedProjects();
+        } else {
+          const container = document.getElementById('unfinishedProjects');
+          container.innerHTML = `
+            <div class="text-center text-red-500 py-4">
+              <p class="text-sm mb-2">⚠️ 无法连接到后端服务</p>
+              <p class="text-xs text-gray-500">请确保后端服务正在运行 (${API_BASE})</p>
+              <button onclick="loadUnfinishedProjects()" class="mt-2 text-xs text-purple-400 hover:text-purple-300">
+                🔄 重试
+              </button>
+            </div>
+          `;
+        }
+      }).catch((error) => {
+        console.error('API connection test error:', error);
+        loadUnfinishedProjects();  // Try anyway
+      });
+    });
+
+    // Test API connection
+    async function testApiConnection() {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(`${API_BASE}/api/projects`, {
+          method: 'GET',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        console.log('API connection test successful:', response.status);
+        return true;
+      } catch (error) {
+        console.error('API connection test failed:', error);
+        if (error.name === 'AbortError') {
+          console.error('API connection timeout');
+        }
+        return false;
+      }
+    }
+
+    // Start polling for updates
+    function startPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      // Poll every 2 seconds
+      pollingInterval = setInterval(() => {
+        if (currentProjectId) {
+          fetchProjectState();
+        }
+      }, 2000);
+    }
+
+    // Stop polling
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    }
+
+    // Fetch project state
+    async function fetchProjectState() {
+      if (!currentProjectId) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/project/${currentProjectId}/state`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.workflow) {
+            updateProjectInfo(data.workflow, data.artifacts, data.logs);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch state:', error);
+      }
+    }
+
+    // Update project info
+    function updateProjectInfo(workflow, artifacts, logs = []) {
+      if (!workflow) return;
+
+      document.getElementById('projectId').textContent = workflow.project_id?.substring(0, 8) || '-';
+      const previousStep = currentStep;
+      currentStep = workflow.current_step;
+      document.getElementById('currentStep').textContent = formatStep(workflow.current_step);
+      document.getElementById('status').textContent = formatStatus(workflow.status);
+      currentProjectId = workflow.project_id;
+
+      // 检测步骤变化，重置计时器
+      if (previousStep !== currentStep) {
+        stepStartTime = Date.now();
+        lastArtifactCount = 0;
+        hideRetrySection();
+      }
+
+      // 更新产出物数量
+      const artifactCount = artifacts ? Object.keys(artifacts).length : 0;
+      if (artifactCount > lastArtifactCount) {
+        // 有新的产出物生成，重置计时器
+        stepStartTime = Date.now();
+        lastArtifactCount = artifactCount;
+        hideRetrySection();
+      }
+
+      // 检测超时（3分钟）
+      if (workflow.status === 'running' && stepStartTime) {
+        const elapsed = Date.now() - stepStartTime;
+        if (elapsed > 180000) {  // 3分钟
+          showRetrySection(elapsed);
+        }
+      }
+
+      // 检查后端错误信息（从 logs 中查找 FAILED 状态的日志）
+      if (logs && logs.length > 0) {
+        const failedLogs = logs.filter(log => log.status === 'FAILED');
+        if (failedLogs.length > 0) {
+          const lastFailed = failedLogs[failedLogs.length - 1]; // 最早的失败日志
+          const errorMsg = lastFailed.message || lastFailed.detail || '未知错误';
+          showRetrySection(null, errorMsg);
+          console.error('[Backend Error]', lastFailed);
+        }
+      }
+
+      // Update step cards
+      updateStepCards(workflow.current_step, workflow.status);
+
+      // Update guide and buttons
+      // 更新currentArtifacts（在updateGuideAndButtons之前）
+      currentArtifacts = artifacts || {};
+
+      console.log('[DEBUG] Current step:', workflow.current_step, 'Status:', workflow.status);
+      console.log('[DEBUG] Artifacts:', Object.keys(artifacts || {}));
+
+      updateGuideAndButtons(workflow.current_step, workflow.status);
+
+      // Update artifacts list
+      if (artifacts && Object.keys(artifacts).length > 0) {
+        updateArtifactList(artifacts);
+      }
+
+      // Check for errors
+      if (workflow.status === 'failed') {
+        showError('创作过程出现错误，请点击"重试"按钮重新执行当前步骤。');
+      }
+    }
+
+    // Update step cards
+    function updateStepCards(currentStep, status) {
+      const stepMap = {
+        'step_1_topic': 1,
+        'step_2_outline': 2,
+        'step_2_5_title': 2.5,
+        'step_3_select': 3,
+        'step_4_validate': 4,
+        'step_5_generate': 5,
+        'step_6_review': 6,
+        'step_7_opening': 7
+      };
+
+      const currentStepNum = stepMap[currentStep] || 0;
+
+      document.querySelectorAll('.step-card').forEach(card => {
+        const step = parseInt(card.dataset.step);
+        card.classList.remove('active', 'completed', 'pending', 'waiting', 'error');
+
+        if (step < currentStepNum) {
+          card.classList.add('completed');
+        } else if (step === currentStepNum) {
+          if (status === 'waiting_human') {
+            card.classList.add('waiting');
+          } else if (status === 'failed') {
+            card.classList.add('error');
+          } else {
+            card.classList.add('active');
+          }
+        } else {
+          card.classList.add('pending');
+        }
+      });
+    }
+
+    // Update guide and buttons
+    function updateGuideAndButtons(step, status) {
+      const guideTip = document.getElementById('guideTip');
+      const guideTitle = document.getElementById('guideTitle');
+      const guideText = document.getElementById('guideText');
+
+      const nextBtn = document.getElementById('nextStepBtn');
+      const reviewBtn = document.getElementById('reviewBtn');
+      const openingBtn = document.getElementById('openingBtn');
+      const titleBtn = document.getElementById('titleBtn');
+
+      // Reset buttons
+      nextBtn.disabled = true;
+      reviewBtn.disabled = true;
+      openingBtn.disabled = true;
+      if (titleBtn) titleBtn.disabled = true;
+
+      guideTip.classList.remove('hidden');
+
+      switch(step) {
+        case 'step_1_topic':
+          if (status === 'running') {
+            guideTitle.textContent = '🎨 正在生成选题...';
+            guideText.textContent = 'AI 正在为您生成 10 个高概念选题，请稍候（可能需要 1-2 分钟）...';
+          } else {
+            guideTitle.textContent = '✅ 选题已生成';
+            guideText.textContent = '选题生成完成！查看右侧内容预览，满意后点击"下一步"继续。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 生成大纲';
+          }
+          break;
+
+        case 'step_2_outline':
+          if (status === 'running') {
+            guideTitle.textContent = '📋 正在生成大纲...';
+            guideText.textContent = 'AI 正在为您生成完整的故事大纲、角色设定和章节规划...';
+          } else {
+            guideTitle.textContent = '✅ 大纲已生成';
+            guideText.textContent = '大纲生成完成！查看右侧内容预览，满意后点击"生成书名"或"下一步"继续。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 生成书名';
+            // 启用生成书名按钮
+            const titleBtn = document.getElementById('titleBtn');
+            if (titleBtn) titleBtn.disabled = false;
+          }
+          break;
+
+        case 'step_2_5_title':
+          // 检查是否已经选择了书名
+          const hasSelectedTitle = currentArtifacts && currentArtifacts.selected_title;
+          const titleBtn = document.getElementById('titleBtn');
+
+          if (status === 'waiting_human') {
+            guideTitle.textContent = '📚 请选择书名';
+            guideText.textContent = '书名已生成！请从右侧预览中选择一个喜欢的书名，或自定义输入。';
+            loadTitleCandidates();
+            if (titleBtn) {
+              titleBtn.disabled = true;
+              titleBtn.textContent = '📚 生成书名';
+            }
+          } else if (hasSelectedTitle) {
+            // 已经选择了书名，可以进入下一步
+            guideTitle.textContent = '✅ 书名已选择';
+            guideText.textContent = '书名已选择！点击"下一步"继续诊断骨架。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 诊断骨架';
+            if (titleBtn) {
+              titleBtn.disabled = true;
+              titleBtn.textContent = '✅ 书名已定';
+            }
+          } else if (status === 'running') {
+            guideTitle.textContent = '🔖 正在生成书名...';
+            guideText.textContent = 'AI 正在为您分析大纲，生成多个候选书名...';
+            if (titleBtn) {
+              titleBtn.disabled = true;
+              titleBtn.textContent = '⏳ 生成中...';
+            }
+          } else {
+            guideTitle.textContent = '✅ 书名已选择';
+            guideText.textContent = '书名已选择！点击"下一步"继续诊断骨架。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 诊断骨架';
+            if (titleBtn) {
+              titleBtn.disabled = true;
+              titleBtn.textContent = '✅ 书名已定';
+            }
+          }
+          break;
+
+        case 'step_3_select':
+        case 'step_4_validate':
+          // 检查是否已经选择了骨架
+          const hasSelectedSkeleton = currentArtifacts && currentArtifacts.selected_skeleton;
+          const hasSkeletonCandidates = currentArtifacts && currentArtifacts.skeleton_candidates;
+
+          if (status === 'waiting_human') {
+            guideTitle.textContent = '🎯 请选择骨架';
+            guideText.textContent = '骨架诊断完成！请从弹出的窗口中选择一个候选骨架继续创作。';
+            loadSkeletonCandidates();
+          } else if (hasSelectedSkeleton) {
+            // 已经选择了骨架，可以进入下一步
+            guideTitle.textContent = '✅ 骨架已选择';
+            guideText.textContent = '骨架已选择！点击"下一步"开始生成小说正文。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 生成正文';
+          } else if (status === 'running') {
+            guideTitle.textContent = '🔍 正在诊断骨架...';
+            guideText.textContent = 'AI 正在分析您的大纲，并生成 3 个优化后的候选骨架...';
+          } else if (hasSkeletonCandidates) {
+            // 有候选骨架但状态不是waiting_human（旧项目），显示选择界面
+            guideTitle.textContent = '🎯 请选择骨架';
+            guideText.textContent = '骨架诊断完成！请从弹出的窗口中选择一个候选骨架继续创作。';
+            loadSkeletonCandidates();
+          } else {
+            guideTitle.textContent = '✅ 骨架已选择';
+            guideText.textContent = '骨架已选择！点击"下一步"开始生成小说正文。';
+            nextBtn.disabled = false;
+            nextBtn.textContent = '▶️ 生成正文';
+          }
+          break;
+
+        case 'step_5_generate':
+          if (status === 'running') {
+            guideTitle.textContent = '✍️ 正在生成正文...';
+            guideText.textContent = 'AI 正在根据您选择的骨架创作小说章节...';
+          } else {
+            guideTitle.textContent = '✅ 正文已生成';
+            guideText.textContent = '第一章生成完成！您可以点击"评审"分析质量，或点击"开头优化"改进开篇。';
+            reviewBtn.disabled = false;
+            openingBtn.disabled = false;
+          }
+          break;
+
+        case 'step_6_review':
+          if (status === 'running') {
+            guideTitle.textContent = '🔍 正在评审...';
+            guideText.textContent = 'AI 正在分析您小说的读者留存点和弃读点...';
+          } else {
+            guideTitle.textContent = '✅ 评审完成';
+            guideText.textContent = '评审完成！查看评审意见，您可以点击"开头优化"改进开篇。';
+            openingBtn.disabled = false;
+          }
+          break;
+
+        case 'step_7_opening':
+          if (status === 'running') {
+            guideTitle.textContent = '💡 正在优化开头...';
+            guideText.textContent = 'AI 正在为您生成多个版本的开篇建议...';
+          } else {
+            guideTitle.textContent = '🎉 创作完成';
+            guideText.textContent = '恭喜！所有步骤已完成。您可以查看所有产出物，或重新开始创作。';
+          }
+          break;
+
+        default:
+          if (!currentProjectId) {
+            showGuide('welcome');
+          } else {
+            // Unknown step, show generic message
+            guideTitle.textContent = '📝 继续创作';
+            guideText.textContent = '您可以继续完成项目的后续步骤。';
+          }
+          break;
+      }
+
+      // 通用逻辑：如果有大纲且没有选中书名，启用"生成书名"按钮
+      const hasOutline = currentArtifacts && currentArtifacts.novel_outline;
+      const hasSelectedTitle = currentArtifacts && currentArtifacts.selected_title;
+
+      console.log('[DEBUG] Title button check:', {
+        hasOutline,
+        hasSelectedTitle,
+        titleBtnExists: !!titleBtn,
+        step,
+        status
+      });
+
+      if (hasOutline && !hasSelectedTitle && titleBtn) {
+        // 只在非等待书名选择状态时启用
+        if (step !== 'step_2_5_title' || status !== 'waiting_human') {
+          console.log('[DEBUG] Enabling title button');
+          titleBtn.disabled = false;
+          titleBtn.textContent = '📚 生成书名';
+        }
+      }
+
+      // Hide guide tip if we have a project
+      if (currentProjectId) {
+        guideTip.classList.remove('hidden');
+      }
+    }
+
+    // Show guide
+    function showGuide(type) {
+      const guideTip = document.getElementById('guideTip');
+      const guideTitle = document.getElementById('guideTitle');
+      const guideText = document.getElementById('guideText');
+
+      guideTip.classList.remove('hidden');
+
+      switch(type) {
+        case 'welcome':
+          guideTitle.textContent = '👋 欢迎使用 AI 小说创作工坊';
+          guideText.textContent = '在左侧配置您的创作参数（题材、受众、风格、女主身份），然后点击"开始创作"按钮即可开始您的创作之旅。';
+          break;
+      }
+    }
+
+    // Show error
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      const errorText = document.getElementById('errorText');
+      errorText.textContent = message;
+      errorDiv.classList.remove('hidden');
+    }
+
+    // Hide error
+    function hideError() {
+      document.getElementById('errorMessage').classList.add('hidden');
+    }
+
+    // Update artifact list
+    function updateArtifactList(artifacts) {
+      // Check if artifacts actually changed
+      const newKeys = Object.keys(artifacts).sort();
+      const currentKeys = Object.keys(currentArtifacts).sort();
+      const hasChanged = JSON.stringify(newKeys) !== JSON.stringify(currentKeys);
+
+      if (!hasChanged) {
+        // Artifacts haven't changed, skip update
+        return;
+      }
+
+      console.log('Artifacts updated:', newKeys);
+      currentArtifacts = artifacts;
+      const select = document.getElementById('artifactSelect');
+      const currentValue = select.value;
+
+      select.innerHTML = '<option value="">选择产出物...</option>';
+      const artifactNames = {
+        'topic_ideas': '📌 选题创意',
+        'novel_outline': '📋 小说大纲',
+        'title_candidates': '📚 候选书名',
+        'selected_title': '✅ 选中书名',
+        'skeleton_candidates': '🔄 候选骨架',
+        'selected_skeleton': '✅ 选中骨架',
+        'chapter_content': '📖 章节正文',
+        'review_comments': '🔍 评审意见',
+        'opening_suggestion': '💡 开头建议'
+      };
+
+      Object.keys(artifacts).forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = artifactNames[key] || key;
+        select.appendChild(option);
+      });
+
+      // Restore previous selection if it still exists
+      if (currentValue && artifacts[currentValue]) {
+        select.value = currentValue;
+      } else if (newKeys.length > 0 && !currentValue) {
+        // Only auto-load if this is the first load (no previous selection)
+        const firstArtifact = newKeys[0];
+        select.value = firstArtifact;
+        loadArtifact();
+      }
+    }
+
+    // Load artifact content
+    async function loadArtifact() {
+      const artifactType = document.getElementById('artifactSelect').value;
+      if (!artifactType || !currentProjectId) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/project/${currentProjectId}/artifact/${artifactType}`);
+        if (response.ok) {
+          const data = await response.json();
+          displayContent(data.content);
+        } else {
+          displayContent('加载失败，请重试');
+        }
+      } catch (error) {
+        console.error('Failed to load artifact:', error);
+        displayContent('加载失败，请重试');
+      }
+    }
+
+    // Display content
+    function displayContent(content) {
+      const display = document.getElementById('contentDisplay');
+      display.innerHTML = formatContent(content);
+
+      // Update word count
+      const wordCount = document.getElementById('wordCount');
+      const wordCountNum = document.getElementById('wordCountNum');
+      wordCountNum.textContent = content ? content.length : 0;
+      wordCount.classList.remove('hidden');
+    }
+
+    // Format content
+    function formatContent(content) {
+      if (!content) return '<div class="text-center text-gray-500 py-12"><p>暂无内容</p></div>';
+
+      return content
+        .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-purple-400 mt-4 mb-2">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold text-purple-300 mt-4 mb-2">$1</h1>')
+        .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-purple-300 mt-3 mb-1">$1</h3>')
+        .replace(/^\| (.+) \|$/gm, '<div class="table-row text-sm py-1">$1</div>')
+        .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+        .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-purple-300">$1</strong>')
+        .replace(/\n\n/g, '</p><p class="mt-3">')
+        .replace(/\n/g, '<br>');
+    }
+
+    // Start project
+    async function startProject() {
+      hideError();
+
+      const genre = document.getElementById('genre').value;
+      const audience = document.getElementById('audience').value;
+      const tone = document.getElementById('tone').value;
+      const femaleLead = document.getElementById('femaleLead').value;
+
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('startBtn').textContent = '⏳ 创作中...';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/novel/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            genre,
+            audience,
+            tone,
+            female_lead_identity: femaleLead
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          currentProjectId = data.project_id;
+
+          // Start polling for updates
+          startPolling();
+
+          // Initial state fetch
+          setTimeout(fetchProjectState, 1000);
+        } else {
+          const errorData = await response.json();
+          showError(errorData.detail || '启动失败，请重试');
+        }
+      } catch (error) {
+        console.error('Failed to start project:', error);
+        showError('启动失败，请检查网络连接后重试');
+      } finally {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = '🚀 开始创作';
+      }
+    }
+
+    // Execute next step
+    async function executeNextStep() {
+      if (!currentProjectId) return;
+
+      hideError();
+
+      const stepActions = {
+        'step_1_topic': () => runStep('outline'),
+        'step_2_outline': () => runStep('title'),
+        'step_2_5_title': () => runStep('diagnostics'),
+        'step_4_validate': () => runStep('generate'),
+        'step_5_generate': () => runStep('review'),
+        'step_6_review': () => runStep('opening'),
+        'step_7_opening': () => completeProject()
+      };
+
+      const action = stepActions[currentStep];
+      if (action) {
+        await action();
+      }
+    }
+
+    // Run specific step
+    async function runStep(step) {
+      try {
+        const endpoints = {
+          'outline': '/api/novel/{projectId}/step/outline',
+          'title': '/api/novel/{projectId}/step/title',
+          'diagnostics': '/api/novel/{projectId}/step/diagnostics',
+          'generate': '/api/novel/{projectId}/generate-chapter',
+          'review': '/api/novel/{projectId}/review',
+          'opening': '/api/novel/{projectId}/optimize-opening'
+        };
+
+        const endpoint = endpoints[step].replace('{projectId}', currentProjectId);
+
+        console.log('Starting step:', step);
+        console.log('Endpoint:', endpoint);
+
+        const response = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' });
+
+        if (!response.ok) {
+          throw new Error('步骤执行失败');
+        }
+
+        console.log('Step started successfully, starting polling...');
+
+        // Start polling to monitor progress
+        startPolling();
+
+        // Initial state fetch
+        setTimeout(fetchProjectState, 500);
+      } catch (error) {
+        console.error('Failed to run step:', error);
+        showError('步骤执行失败，请重试');
+      }
+    }
+
+    // Load skeleton candidates
+    async function loadSkeletonCandidates() {
+      if (!currentProjectId) return;
+      if (skeletonModalOpened) return;  // 防止重复加载
+
+      try {
+        const response = await fetch(`${API_BASE}/api/project/${currentProjectId}/artifact/skeleton_candidates`);
+        if (response.ok) {
+          const data = await response.json();
+          displaySkeletonCandidates(data.content);
+          skeletonModalOpened = true;
+        }
+      } catch (error) {
+        console.error('Failed to load skeleton candidates:', error);
+      }
+    }
+
+    // Display skeleton candidates
+    function displaySkeletonCandidates(content) {
+      const container = document.getElementById('skeletonOptions');
+
+      if (!content) {
+        container.innerHTML = '<p class="text-gray-500">暂无候选骨架</p>';
+        return;
+      }
+
+      console.log('Parsing skeleton candidates, content length:', content.length);
+
+      // Split by skeleton headers - handle multiple formats
+      // Format 1: ## 候选骨架
+      // Format 2: **骨架X：** or **骨架 X：**
+      // Format 3: 骨架[一二三]、
+      let skeletons = content.split(/## 候选骨架/).filter(s => s.trim());
+
+      // If that didn't work, try alternative formats
+      if (skeletons.length <= 1) {
+        skeletons = content.split(/\*\*骨架[一二三一二三１２３][：:]/).filter(s => s.trim());
+      }
+
+      // If still not working, try another format
+      if (skeletons.length <= 1) {
+        skeletons = content.split(/骨架[一二三１２３]/).filter(s => s.trim());
+      }
+
+      console.log('Found', skeletons.length, 'skeleton candidates');
+
+      // If we still can't parse, show error and the raw content
+      if (skeletons.length <= 1) {
+        container.innerHTML = `
+          <div class="bg-yellow-900/30 border border-yellow-600/50 rounded-xl p-4 mb-4">
+            <p class="text-yellow-400 mb-2">⚠️ 无法解析候选骨架格式</p>
+            <p class="text-sm text-gray-400 mb-3">系统无法识别骨架格式。请检查生成内容是否符合预期格式。</p>
+            <details class="text-sm">
+              <summary class="cursor-pointer text-purple-400">查看原始内容</summary>
+              <pre class="mt-2 text-xs text-gray-500 overflow-auto max-h-64">${content.substring(0, 2000)}${content.length > 2000 ? '...' : ''}</pre>
+            </details>
+          </div>
+        `;
+        document.getElementById('skeletonModal').classList.remove('hidden');
+        return;
+      }
+
+      // Store the parsed skeletons globally for later use
+      window.parsedSkeletons = skeletons;
+
+      container.innerHTML = skeletons.map((skeleton, index) => {
+        const lines = skeleton.split('\n');
+        const titleLine = lines[0] || '';
+
+        // Try to extract title from various formats
+        let title = `方案 ${String.fromCharCode(65 + index)}`;
+
+        // Format: **Title** or [Title] or Title：Description
+        const boldMatch = titleLine.match(/\*\*([^*]+)\*\*/);
+        if (boldMatch) {
+          title = boldMatch[1].trim();
+        } else {
+          const bracketMatch = titleLine.match(/\[([^\]]+)\]/);
+          if (bracketMatch) {
+            title = bracketMatch[1].trim();
+          } else {
+            const colonMatch = titleLine.match(/[:：]\s*(.+)/);
+            if (colonMatch) {
+              title = colonMatch[1].trim();
+            }
+          }
+        }
+
+        const preview = skeleton.substring(0, 400);
+        // Escape the skeleton content for HTML attribute
+        const escapedContent = skeleton.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        return `
+          <div class="skeleton-option glass-dark rounded-xl p-4 mb-3" data-index="${index}" data-skeleton-content="${escapedContent}" onclick="selectSkeletonOption(${index})">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="selection-indicator w-6 h-6 rounded-full border-2 border-gray-600 flex items-center justify-center">
+                <div class="selection-dot w-3 h-3 rounded-full bg-green-500 hidden"></div>
+              </div>
+              <h3 class="font-semibold text-purple-400">候选骨架 ${String.fromCharCode(65 + index)}: ${title}</h3>
+            </div>
+            <div class="text-sm text-gray-400 whitespace-pre-line">${preview}${skeleton.length > 400 ? '...' : ''}</div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('skeletonModal').classList.remove('hidden');
+    }
+
+    // Select skeleton option
+    function selectSkeletonOption(index) {
+      selectedSkeletonIndex = index;
+
+      document.querySelectorAll('.skeleton-option').forEach((el, i) => {
+        el.classList.remove('selected');
+        const indicator = el.querySelector('.selection-indicator');
+        const dot = el.querySelector('.selection-dot');
+
+        if (i === index) {
+          el.classList.add('selected');
+          indicator.classList.remove('border-gray-600');
+          indicator.classList.add('border-green-500', 'bg-green-500/20');
+          dot.classList.remove('hidden');
+
+          // Update selection status
+          const titleEl = el.querySelector('h3');
+          const title = titleEl.textContent.replace('候选骨架 [A-C]: ', '').replace('候选骨架 [A-C]:', '');
+          const statusDiv = document.getElementById('selectionStatus');
+          const nameSpan = document.getElementById('selectedSkeletonName');
+          statusDiv.classList.remove('hidden');
+          nameSpan.textContent = title;
+        } else {
+          indicator.classList.add('border-gray-600');
+          indicator.classList.remove('border-green-500', 'bg-green-500/20');
+          dot.classList.add('hidden');
+        }
+      });
+
+      console.log('Selected skeleton:', index);
+    }
+
+    // Confirm select skeleton
+    async function confirmSelectSkeleton(btnElement) {
+      console.log('confirmSelectSkeleton called, selectedSkeletonIndex:', selectedSkeletonIndex);
+      console.log('currentProjectId:', currentProjectId);
+
+      if (selectedSkeletonIndex === null || selectedSkeletonIndex === undefined) {
+        alert('请先选择一个候选骨架（点击任意一个选项即可选中）');
+        console.log('ERROR: selectedSkeletonIndex is null/undefined');
+        return;
+      }
+
+      if (!currentProjectId) {
+        alert('项目ID为空，请刷新页面重试');
+        console.log('ERROR: currentProjectId is empty');
+        return;
+      }
+
+      // Get the selected skeleton content from the options
+      const options = document.querySelectorAll('.skeleton-option');
+      console.log('options length:', options.length);
+
+      const selectedOption = options[selectedSkeletonIndex];
+      if (!selectedOption) {
+        alert('选择的项目不存在，请重新选择');
+        console.log('ERROR: selectedOption not found for index:', selectedSkeletonIndex);
+        return;
+      }
+
+      // Get the full skeleton content from data attribute
+      const skeletonContent = selectedOption.getAttribute('data-skeleton-content');
+      if (!skeletonContent) {
+        alert('骨架内容为空，请重新选择');
+        console.log('ERROR: skeleton content is empty');
+        return;
+      }
+
+      console.log('Selected skeleton content length:', skeletonContent.length);
+
+      // Find the confirm button if not passed
+      let btn = btnElement;
+      if (!btn) {
+        btn = document.querySelector('button[onclick*="confirmSelectSkeleton"]');
+      }
+      if (!btn) {
+        console.log('WARNING: Could not find confirm button');
+      }
+
+      try {
+        // 禁用按钮防止重复点击
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '⏳ 提交中...';
+        }
+
+        console.log('Sending request to:', `${API_BASE}/api/novel/${currentProjectId}/select-skeleton`);
+        console.log('Request body length:', skeletonContent.length);
+
+        const response = await fetch(`${API_BASE}/api/novel/${currentProjectId}/select-skeleton`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skeleton: skeletonContent })
+        });
+
+        console.log('Response status:', response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Selection successful:', data);
+          closeSkeletonModal();
+          setTimeout(fetchProjectState, 1000);
+        } else {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '✅ 确认选择';
+          }
+          const errorData = await response.json().catch(() => ({ detail: '未知错误' }));
+          console.log('ERROR: Server returned error:', errorData);
+          showError('选择骨架失败：' + (errorData.detail || '请重试'));
+        }
+      } catch (error) {
+        console.error('Failed to select skeleton:', error);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '✅ 确认选择';
+        }
+        showError('选择骨架失败：' + error.message);
+      }
+    }
+
+    // Close skeleton modal
+    function closeSkeletonModal() {
+      document.getElementById('skeletonModal').classList.add('hidden');
+      selectedSkeletonIndex = null;
+      skeletonModalOpened = false;
+
+      // Reset selection status
+      const statusDiv = document.getElementById('selectionStatus');
+      statusDiv.classList.add('hidden');
+
+      // Reset all skeleton options
+      document.querySelectorAll('.skeleton-option').forEach(el => {
+        el.classList.remove('selected');
+        const indicator = el.querySelector('.selection-indicator');
+        const dot = el.querySelector('.selection-dot');
+        indicator.classList.add('border-gray-600');
+        indicator.classList.remove('border-green-500', 'bg-green-500/20');
+        dot.classList.add('hidden');
+      });
+    }
+
+    // ========== Title Selection Functions ==========
+
+    // Load title candidates
+    async function loadTitleCandidates() {
+      if (!currentProjectId) return;
+      if (titleModalOpened) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/project/${currentProjectId}/artifact/title_candidates`);
+        if (response.ok) {
+          const data = await response.json();
+
+          // 尝试从内容中提取JSON数据
+          const jsonMatch = data.content.match(/<!--JSON_DATA:(.+?)-->/);
+          if (jsonMatch) {
+            try {
+              titleCandidatesData = JSON.parse(jsonMatch[1]);
+              displayTitleCandidates(titleCandidatesData);
+              titleModalOpened = true;
+              document.getElementById('titleModal').classList.remove('hidden');
+              return;
+            } catch (e) {
+              console.log('Failed to parse embedded JSON, trying text format...');
+            }
+          }
+
+          // 如果没有嵌入的JSON，使用文本格式解析
+          parseAndDisplayTitles(data.content);
+          titleModalOpened = true;
+          document.getElementById('titleModal').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Failed to load title candidates:', error);
+      }
+    }
+
+    // Parse and display titles from text format
+    function parseAndDisplayTitles(content) {
+      const data = {
+        '热门': [],
+        '文艺': [],
+        '悬疑': []
+      };
+
+      // 尝试解析文本格式的书名
+      const lines = content.split('\n');
+      let currentStyle = '热门';
+      let currentTitle = {};
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        // 检测风格标题
+        if (trimmed.includes('热门风格') || trimmed.includes('## 热门')) {
+          currentStyle = '热门';
+          continue;
+        } else if (trimmed.includes('文艺风格') || trimmed.includes('## 文艺')) {
+          currentStyle = '文艺';
+          continue;
+        } else if (trimmed.includes('悬疑风格') || trimmed.includes('## 悬疑')) {
+          currentStyle = '悬疑';
+          continue;
+        }
+
+        // 解析书名条目
+        const titleMatch = trimmed.match(/\*\*(\d+)\.\s+(《.+?》)*/);
+        if (titleMatch) {
+          const title = titleMatch[2];
+          if (title) {
+            // 查找下一行的推荐度
+            currentTitle = { title: title, score: 0.75, reason: '推荐' };
+            data[currentStyle].push(currentTitle);
+          }
+        } else if (trimmed.includes('推荐度:')) {
+          if (data[currentStyle].length > 0) {
+            const scoreMatch = trimmed.match(/(\d+)%/);
+            if (scoreMatch) {
+              data[currentStyle][data[currentStyle].length - 1].score = parseInt(scoreMatch[1]) / 100;
+            }
+            const reasonMatch = trimmed.match(/\|\s*(.+)/);
+            if (reasonMatch) {
+              data[currentStyle][data[currentStyle].length - 1].reason = reasonMatch[1];
+            }
+          }
+        }
+      }
+
+      titleCandidatesData = data;
+      displayTitleCandidates(data);
+    }
+
+    // Display title candidates
+    function displayTitleCandidates(data) {
+      titleCandidatesData = data;
+      switchTitleTab(currentTitleStyle);
+    }
+
+    // Switch title style tab
+    function switchTitleTab(style) {
+      currentTitleStyle = style;
+
+      // Update tab styles
+      document.querySelectorAll('.title-tab').forEach(tab => {
+        tab.classList.remove('bg-purple-600/20', 'text-purple-400', 'border-purple-600/30');
+        tab.classList.add('bg-gray-700/50', 'text-gray-400', 'border-gray-600/30');
+      });
+
+      const activeTab = document.getElementById('tab' + style.charAt(0).toUpperCase() + style.slice(1));
+      if (activeTab) {
+        activeTab.classList.remove('bg-gray-700/50', 'text-gray-400', 'border-gray-600/30');
+        activeTab.classList.add('bg-purple-600/20', 'text-purple-400', 'border-purple-600/30');
+      }
+
+      // Get style key (handle both English and Chinese)
+      let styleKey = style;
+      if (style === 'popular') styleKey = '热门';
+      else if (style === 'literary') styleKey = '文艺';
+      else if (style === 'suspense') styleKey = '悬疑';
+
+      const titles = titleCandidatesData[styleKey] || titleCandidatesData[style] || [];
+
+      const container = document.getElementById('titleOptions');
+
+      if (titles.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">暂无该风格的候选书名</p>';
+        return;
+      }
+
+      container.innerHTML = titles.map((titleInfo, index) => {
+        if (typeof titleInfo === 'string') {
+          titleInfo = { title: titleInfo, score: 0.75, reason: '推荐' };
+        }
+
+        const title = titleInfo.title || titleInfo.content || '';
+        const score = (titleInfo.score || titleInfo.recommendation || 0.75) * 100;
+        const reason = titleInfo.reason || titleInfo.recommendation_reason || '推荐';
+
+        return `
+          <div class="title-option cursor-pointer p-4 rounded-xl border-2 border-gray-600 hover:border-purple-500 transition-all"
+               data-title="${title}"
+               data-index="${index}"
+               onclick="selectTitleOption(this)">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-white mb-1">${title}</h3>
+                <div class="flex items-center gap-3 text-sm">
+                  <span class="text-purple-400">推荐度: ${score.toFixed(0)}%</span>
+                  <span class="text-gray-400">${reason}</span>
+                </div>
+              </div>
+              <div class="selection-indicator w-6 h-6 rounded-full border-2 border-gray-600 flex items-center justify-center">
+                <div class="selection-dot w-3 h-3 rounded-full bg-green-500 hidden"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Select title option
+    function selectTitleOption(element) {
+      // Reset all options
+      document.querySelectorAll('.title-option').forEach(el => {
+        el.classList.remove('border-green-500', 'bg-green-500/10');
+        el.classList.add('border-gray-600');
+        const indicator = el.querySelector('.selection-indicator');
+        const dot = el.querySelector('.selection-dot');
+        indicator.classList.remove('border-green-500', 'bg-green-500/20');
+        indicator.classList.add('border-gray-600');
+        dot.classList.add('hidden');
+      });
+
+      // Highlight selected option
+      element.classList.remove('border-gray-600');
+      element.classList.add('border-green-500', 'bg-green-500/10');
+      const indicator = element.querySelector('.selection-indicator');
+      const dot = element.querySelector('.selection-dot');
+      indicator.classList.remove('border-gray-600');
+      indicator.classList.add('border-green-500', 'bg-green-500/20');
+      dot.classList.remove('hidden');
+
+      // Update selection status
+      selectedTitleIndex = element.getAttribute('data-index');
+      const title = element.getAttribute('data-title');
+      document.getElementById('selectedTitleName').textContent = title;
+      document.getElementById('titleSelectionStatus').classList.remove('hidden');
+    }
+
+    // Confirm custom title
+    function confirmCustomTitle() {
+      const customTitle = document.getElementById('customTitleInput').value.trim();
+      if (!customTitle) {
+        alert('请输入书名');
+        return;
+      }
+
+      // 确认自定义书名
+      confirmTitleSelection(customTitle);
+    }
+
+    // Confirm selected title
+    async function confirmSelectTitle() {
+      if (selectedTitleIndex === null) {
+        alert('请先选择一个书名');
+        return;
+      }
+
+      const selectedOption = document.querySelector(`.title-option[data-index="${selectedTitleIndex}"]`);
+      if (!selectedOption) {
+        alert('未找到选择的书名');
+        return;
+      }
+
+      const title = selectedOption.getAttribute('data-title');
+      confirmTitleSelection(title);
+    }
+
+    // Confirm title selection
+    async function confirmTitleSelection(title) {
+      try {
+        const response = await fetch(`${API_BASE}/api/novel/${currentProjectId}/select-title`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title })
+        });
+
+        if (!response.ok) {
+          throw new Error('选择书名失败');
+        }
+
+        // Close modal
+        closeTitleModal();
+
+        // Start polling
+        startPolling();
+        setTimeout(fetchProjectState, 500);
+      } catch (error) {
+        console.error('Failed to select title:', error);
+        alert('选择书名失败，请重试');
+      }
+    }
+
+    // Close title modal
+    function closeTitleModal() {
+      document.getElementById('titleModal').classList.add('hidden');
+      selectedTitleIndex = null;
+      titleModalOpened = false;
+
+      // Reset selection status
+      const statusDiv = document.getElementById('titleSelectionStatus');
+      statusDiv.classList.add('hidden');
+
+      // Reset custom input
+      document.getElementById('customTitleInput').value = '';
+
+      // Reset all title options
+      document.querySelectorAll('.title-option').forEach(el => {
+        el.classList.remove('border-green-500', 'bg-green-500/10');
+        el.classList.add('border-gray-600');
+        const indicator = el.querySelector('.selection-indicator');
+        const dot = el.querySelector('.selection-dot');
+        indicator.classList.remove('border-green-500', 'bg-green-500/20');
+        indicator.classList.add('border-gray-600');
+        dot.classList.add('hidden');
+      });
+    }
+
+    // Make functions available globally
+    window.switchTitleTab = switchTitleTab;
+    window.selectTitleOption = selectTitleOption;
+    window.confirmCustomTitle = confirmCustomTitle;
+    window.confirmSelectTitle = confirmSelectTitle;
+    window.closeTitleModal = closeTitleModal;
+
+    // Review novel
+    async function reviewNovel() {
+      if (!currentProjectId) return;
+      await runStep('review');
+    }
+
+    // Optimize opening
+    async function optimizeOpening() {
+      if (!currentProjectId) return;
+      await runStep('opening');
+    }
+
+    // Generate title
+    async function generateTitle() {
+      if (!currentProjectId) {
+        alert('请先启动一个项目');
+        return;
+      }
+
+      hideError();
+
+      // 禁用按钮防止重复点击
+      const titleBtn = document.getElementById('titleBtn');
+      titleBtn.disabled = true;
+      titleBtn.textContent = '⏳ 生成中...';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/novel/${currentProjectId}/step/title`, { method: 'POST' });
+
+        if (!response.ok) {
+          throw new Error('书名生成失败');
+        }
+
+        console.log('Title generation started successfully, starting polling...');
+
+        // Start polling to monitor progress
+        startPolling();
+
+        // Initial state fetch
+        setTimeout(fetchProjectState, 500);
+      } catch (error) {
+        console.error('Failed to generate title:', error);
+        showError('书名生成失败，请检查网络连接后重试');
+        titleBtn.disabled = false;
+        titleBtn.textContent = '📚 生成书名';
+      }
+    }
+
+    // Complete project
+    async function completeProject() {
+      if (!currentProjectId) return;
+
+      try {
+        await fetch(`${API_BASE}/api/novel/${currentProjectId}/complete`, { method: 'POST' });
+        alert('🎉 恭喜！小说创作已完成！');
+      } catch (error) {
+        console.error('Failed to complete project:', error);
+      }
+    }
+
+    // Reset project
+    async function resetProject() {
+      if (!currentProjectId) {
+        window.location.reload();
+        return;
+      }
+
+      if (!confirm('确定要重置当前项目吗？所有创作内容将被删除。')) {
+        return;
+      }
+
+      stopPolling();
+
+      try {
+        await fetch(`${API_BASE}/api/project/${currentProjectId}/reset`, { method: 'POST' });
+        window.location.reload();
+      } catch (error) {
+        console.error('Failed to reset project:', error);
+      }
+    }
+
+    // Manual refresh
+    function manualRefresh() {
+      hideError();
+      fetchProjectState();
+    }
+
+    // Reset stuck status
+    async function resetStatus() {
+      console.log('[DEBUG] resetStatus called, currentProjectId:', currentProjectId);
+
+      if (!currentProjectId) {
+        alert('没有项目可以重置');
+        return;
+      }
+
+      if (!confirm('确定要重置项目状态吗？这会将卡住的"运行中"状态解除，让你继续后续操作。')) {
+        return;
+      }
+
+      try {
+        console.log('Resetting status for project:', currentProjectId);
+        const response = await fetch(`${API_BASE}/api/project/${currentProjectId}/reset-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        console.log('Reset status response:', response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Reset status data:', data);
+          alert('状态已重置！');
+          fetchProjectState();
+        } else {
+          const errorText = await response.text();
+          console.error('Reset status failed:', response.status, errorText);
+          alert(`重置失败 (${response.status}): ${errorText}`);
+        }
+      } catch (error) {
+        console.error('Failed to reset status:', error);
+        alert('重置失败：' + error.message);
+      }
+    }
+
+    // Show retry section
+    function showRetrySection(elapsedMs = null, errorMsg = null) {
+      const retrySection = document.getElementById('retrySection');
+      if (!retrySection) return;
+
+      retrySection.classList.remove('hidden');
+
+      // Update warning message with more details
+      const warningText = retrySection.querySelector('.text-yellow-300');
+      if (warningText) {
+        let message = '';
+
+        if (errorMsg) {
+          // Show backend error message
+          message = `任务执行出错: ${errorMsg}`;
+        } else if (elapsedMs) {
+          // Show timeout information
+          const minutes = Math.floor(elapsedMs / 60000);
+          const seconds = Math.floor((elapsedMs % 60000) / 1000);
+          message = `检测到任务可能超时 (已运行 ${minutes}分${seconds}秒)`;
+        } else {
+          message = '检测到任务可能超时';
+        }
+
+        warningText.textContent = message;
+      }
+
+      // Log to console for debugging
+      console.log('[Retry Section] Showing retry section:', {
+        elapsed: elapsedMs,
+        errorMsg: errorMsg,
+        currentStep: currentStep,
+        projectId: currentProjectId
+      });
+    }
+
+    // Hide retry section
+    function hideRetrySection() {
+      const retrySection = document.getElementById('retrySection');
+      if (retrySection) {
+        retrySection.classList.add('hidden');
+      }
+    }
+
+    // Retry current step
+    async function retryCurrentStep() {
+      if (!currentProjectId || !currentStep) return;
+
+      hideRetrySection();
+      hideError();
+
+      const stepRetryMap = {
+        'step_1_topic': () => runStep('topic'),
+        'step_2_outline': () => runStep('outline'),
+        'step_3_select': () => runStep('diagnostics'),
+        'step_4_validate': () => {
+          // 特殊处理：需要重新诊断
+          showGuide('skeleton_retry');
+        },
+        'step_5_generate': () => runStep('generate'),
+        'step_6_review': () => runStep('review'),
+        'step_7_opening': () => runStep('opening')
+      };
+
+      const action = stepRetryMap[currentStep];
+      if (action) {
+        try {
+          await action();
+          // 重置计时器
+          stepStartTime = Date.now();
+        } catch (error) {
+          console.error('Retry failed:', error);
+          showError('重试失败，请重置项目后重新开始');
+        }
+      }
+    }
+
+    // Load unfinished projects
+    async function loadUnfinishedProjects() {
+      const container = document.getElementById('unfinishedProjects');
+
+      console.log('Loading unfinished projects from:', `${API_BASE}/api/projects`);
+
+      try {
+        const response = await fetch(`${API_BASE}/api/projects`);
+        console.log('Response status:', response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Projects data:', data);
+
+          const projects = data.projects || [];
+          console.log('Total projects:', projects.length);
+
+          // Filter unfinished projects (not completed)
+          const unfinished = projects.filter(p => p.status !== 'completed' && p.status !== 'failed');
+          console.log('Unfinished projects:', unfinished.length);
+
+          if (unfinished.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-4"><p class="text-sm">暂无未完成任务</p></div>';
+            return;
+          }
+
+          container.innerHTML = unfinished.slice(0, 5).map(project => {
+            const stepPercent = getStepProgress(project.current_step);
+            const projectId = project.project_id || '';
+            const shortId = projectId.substring(0, 8);
+            return `
+              <div class="glass-dark rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm text-gray-300 truncate">${project.title || project.seed || '未命名项目'}</div>
+                    <div class="text-xs text-gray-500">${formatStep(project.current_step)} · ${formatStatus(project.status)}</div>
+                  </div>
+                  <button onclick="resumeProject('${projectId}')"
+                          class="action-btn bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-xs py-1.5 px-3 rounded-lg border border-purple-600/30 whitespace-nowrap">
+                    ▶️ 继续
+                  </button>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-1.5">
+                  <div class="progress-bar bg-gradient-to-r from-purple-500 to-blue-500 h-1.5 rounded-full transition-all duration-300" style="width: ${stepPercent}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          console.error('API returned error:', response.status, response.statusText);
+          container.innerHTML = '<div class="text-center text-red-500 py-4"><p class="text-sm">加载失败</p></div>';
+        }
+      } catch (error) {
+        console.error('Failed to load unfinished projects:', error);
+        container.innerHTML = '<div class="text-center text-red-500 py-4"><p class="text-sm">加载失败: ' + error.message + '</p></div>';
+      }
+    }
+
+    // Get step progress percentage
+    function getStepProgress(step) {
+      const stepMap = {
+        'step_1_topic': 15,
+        'step_2_outline': 30,
+        'step_3_select': 45,
+        'step_4_validate': 45,
+        'step_5_generate': 60,
+        'step_6_review': 80,
+        'step_7_opening': 95
+      };
+      return stepMap[step] || 0;
+    }
+
+    // Resume project
+    async function resumeProject(projectId) {
+      console.log('resumeProject called with projectId:', projectId);
+
+      // Stop polling
+      console.log('Stopping polling...');
+      stopPolling();
+
+      currentProjectId = projectId;
+      console.log('Set currentProjectId to:', currentProjectId);
+
+      // Show loading message
+      const guideTitle = document.getElementById('guideTitle');
+      const guideText = document.getElementById('guideText');
+      const guideTip = document.getElementById('guideTip');
+
+      console.log('guideTip element:', guideTip);
+      console.log('guideTitle element:', guideTitle);
+      console.log('guideText element:', guideText);
+
+      if (guideTitle) guideTitle.textContent = '⏳ 正在加载项目...';
+      if (guideText) guideText.textContent = '请稍候，正在加载项目数据...';
+      if (guideTip) guideTip.classList.remove('hidden');
+
+      try {
+        console.log('Fetching project state...');
+        // Fetch project state once (no polling)
+        await fetchProjectState();
+
+        // Update UI - don't start polling automatically
+        if (guideTitle) guideTitle.textContent = '✅ 项目已加载';
+        if (guideText) guideText.textContent = '项目加载成功！查看现有内容后，点击"下一步"继续创作。';
+        console.log('Resume project completed (polling NOT started)');
+      } catch (error) {
+        console.error('Failed to resume project:', error);
+        showError('加载项目失败，请重试');
+      }
+    }
+
+    // Utility functions
+    function formatStep(step) {
+      const stepNames = {
+        'step_1_topic': '选题生成',
+        'step_2_outline': '大纲生成',
+        'step_3_select': '骨架诊断',
+        'step_4_validate': '选择骨架',
+        'step_5_generate': '生成正文',
+        'step_6_review': '毒舌评审',
+        'step_7_opening': '开头优化'
+      };
+      return stepNames[step] || step || '-';
+    }
+
+    function formatStatus(status) {
+      const statusNames = {
+        'running': '🔄 进行中',
+        'completed': '✅ 已完成',
+        'waiting_human': '⏸️ 等待选择',
+        'idle': '💤 空闲',
+        'failed': '❌ 失败'
+      };
+      return statusNames[status] || status;
+    }
+
+    // Copy content to clipboard
+    async function copyContent() {
+      const contentDisplay = document.getElementById('contentDisplay');
+      const content = contentDisplay.innerText || contentDisplay.textContent;
+
+      if (!content || content.includes('开始创作后，内容将显示在这里')) {
+        alert('没有可复制的内容');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(content);
+
+        // Show feedback
+        const copyBtn = document.getElementById('copyBtn');
+        const originalHTML = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+        copyBtn.classList.remove('bg-blue-600/20', 'text-blue-400');
+        copyBtn.classList.add('bg-green-600/20', 'text-green-400');
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          copyBtn.innerHTML = originalHTML;
+          copyBtn.classList.remove('bg-green-600/20', 'text-green-400');
+          copyBtn.classList.add('bg-blue-600/20', 'text-blue-400');
+        }, 2000);
+
+        console.log('Content copied to clipboard');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        alert('复制失败，请手动选择文本复制');
+      }
+    }
+
+    // Fullscreen preview mode
+    let isFullscreen = false;
+
+    function toggleFullscreen() {
+      const leftPanel = document.getElementById('leftPanel');
+      const centerPanel = document.getElementById('centerPanel');
+      const rightPanel = document.getElementById('rightPanel');
+      const fullscreenIcon = document.getElementById('fullscreenIcon');
+      const exitFullscreenIcon = document.getElementById('exitFullscreenIcon');
+
+      isFullscreen = !isFullscreen;
+
+      if (isFullscreen) {
+        // Enter fullscreen mode
+        leftPanel.classList.add('hidden');
+        centerPanel.classList.add('hidden');
+        rightPanel.classList.remove('lg:col-span-4');
+        rightPanel.classList.add('lg:col-span-12');
+        fullscreenIcon.classList.add('hidden');
+        exitFullscreenIcon.classList.remove('hidden');
+      } else {
+        // Exit fullscreen mode
+        leftPanel.classList.remove('hidden');
+        centerPanel.classList.remove('hidden');
+        rightPanel.classList.remove('lg:col-span-12');
+        rightPanel.classList.add('lg:col-span-4');
+        fullscreenIcon.classList.remove('hidden');
+        exitFullscreenIcon.classList.add('hidden');
+      }
+    }
+
+    // Export modal functions
+    function showExportModal() {
+      const contentDisplay = document.getElementById('contentDisplay');
+      const content = contentDisplay.innerText || contentDisplay.textContent;
+
+      if (!content || content.includes('开始创作后，内容将显示在这里')) {
+        alert('没有可导出的内容');
+        return;
+      }
+
+      document.getElementById('exportModal').classList.remove('hidden');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.add('hidden');
+    }
+
+    // Export content
+    function exportContent(format = 'md') {
+      const contentDisplay = document.getElementById('contentDisplay');
+      const content = contentDisplay.innerText || contentDisplay.textContent;
+
+      if (!content || content.includes('开始创作后，内容将显示在这里')) {
+        alert('没有可导出的内容');
+        return;
+      }
+
+      const artifactSelect = document.getElementById('artifactSelect');
+      const selectedArtifact = artifactSelect.options[artifactSelect.selectedIndex]?.text || 'content';
+      const filename = `${selectedArtifact}_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+      let mimeType, contentToExport;
+
+      if (format === 'md') {
+        mimeType = 'text/markdown';
+        contentToExport = contentDisplay.innerHTML;
+      } else {
+        mimeType = 'text/plain';
+        contentToExport = content;
+      }
+
+      const blob = new Blob([contentToExport], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      console.log(`Exported content as ${format.toUpperCase()}: ${filename}`);
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      stopPolling();
+    });
+  </script>
+</body>
+
+</html>
